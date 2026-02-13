@@ -69,6 +69,15 @@ curl 'http://localhost:3000/healthz'
 curl 'http://localhost:3000/metrics'
 ```
 
+## Anchoring (Library)
+
+`@fpho/anchor` now supports:
+
+- publishing hourly report JSON to IPFS (CID + mirror URL)
+- building binary OP_RETURN payloads from hourly reports
+- broadcasting anchor transactions through Flux JSON-RPC
+- persisting anchor metadata in `anchors`
+
 ## Verification Quickstart (planned CLI)
 
 ```bash

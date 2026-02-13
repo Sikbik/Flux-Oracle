@@ -1,0 +1,114 @@
+export interface FluxRpcTransport {
+  call<TResult>(method: string, params?: unknown[]): Promise<TResult>;
+}
+
+export interface FluxRpcHttpTransportOptions {
+  endpoint: string;
+  username?: string;
+  password?: string;
+  timeoutMs?: number;
+}
+
+export interface BroadcastOpReturnResult {
+  txid: string;
+  unsignedHex: string;
+  fundedHex: string;
+  signedHex: string;
+}
+
+export class FluxRpcHttpTransport implements FluxRpcTransport {
+  private readonly endpoint: URL;
+  private readonly authHeader: string | null;
+  private readonly timeoutMs: number;
+
+  constructor(options: FluxRpcHttpTransportOptions) {
+    this.endpoint = new URL(options.endpoint);
+    this.timeoutMs = options.timeoutMs ?? 10_000;
+
+    if (options.username && options.password) {
+      const token = Buffer.from(`${options.username}:${options.password}`, 'utf8').toString(
+        'base64'
+      );
+      this.authHeader = `Basic ${token}`;
+    } else {
+      this.authHeader = null;
+    }
+  }
+
+  async call<TResult>(method: string, params: unknown[] = []): Promise<TResult> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.authHeader ? { Authorization: this.authHeader } : {})
+        },
+        body: JSON.stringify({
+          jsonrpc: '1.0',
+          id: 'fpho-anchor',
+          method,
+          params
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`rpc call ${method} failed with status ${response.status}`);
+      }
+
+      const payload = (await response.json()) as {
+        result?: TResult;
+        error?: { code?: number; message?: string } | null;
+      };
+
+      if (payload.error) {
+        const message = payload.error.message ?? 'unknown rpc error';
+        throw new Error(`rpc call ${method} failed: ${message}`);
+      }
+
+      if (payload.result === undefined) {
+        throw new Error(`rpc call ${method} returned no result`);
+      }
+
+      return payload.result;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+}
+
+export async function broadcastOpReturnHex(
+  transport: FluxRpcTransport,
+  opReturnHex: string
+): Promise<BroadcastOpReturnResult> {
+  const unsignedHex = await transport.call<string>('createrawtransaction', [
+    [],
+    [{ data: opReturnHex }]
+  ]);
+
+  const funded = await transport.call<{ hex?: string }>('fundrawtransaction', [unsignedHex]);
+  if (!funded.hex) {
+    throw new Error('fundrawtransaction returned no hex');
+  }
+
+  const signed = await transport.call<{ hex?: string; complete?: boolean }>(
+    'signrawtransactionwithwallet',
+    [funded.hex]
+  );
+
+  if (!signed.hex || signed.complete !== true) {
+    throw new Error('signrawtransactionwithwallet did not return a complete signed tx');
+  }
+
+  const txid = await transport.call<string>('sendrawtransaction', [signed.hex]);
+
+  return {
+    txid,
+    unsignedHex,
+    fundedHex: funded.hex,
+    signedHex: signed.hex
+  };
+}
