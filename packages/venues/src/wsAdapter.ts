@@ -16,6 +16,8 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
   private readonly subscribedPairs = new Set<string>();
 
+  private hasConnectedOnce = false;
+
   constructor(private readonly wsUrl: string) {
     super();
   }
@@ -64,6 +66,10 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
       socket.once('open', () => {
         this.backoff.reset();
+        if (this.hasConnectedOnce) {
+          this.emit('reconnect');
+        }
+        this.hasConnectedOnce = true;
         for (const pair of this.subscribedPairs) {
           this.sendSubscriptionsForPair(pair);
         }
@@ -76,6 +82,7 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
       socket.on('close', () => {
         this.socket = undefined;
+        this.emit('disconnect');
         this.scheduleReconnectIfNeeded();
       });
 
