@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.20.0
+        version: 9.39.2
       '@types/node':
         specifier: ^22.13.1
         version: 22.19.11
@@ -32,6 +35,26 @@ importers:
       vitest:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.11)
+
+  packages/aggregator: {}
+
+  packages/anchor: {}
+
+  packages/api: {}
+
+  packages/cli: {}
+
+  packages/core: {}
+
+  packages/indexer: {}
+
+  packages/ingestor: {}
+
+  packages/p2p: {}
+
+  packages/reporter: {}
+
+  packages/venues: {}
 
 packages:
 
