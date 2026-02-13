@@ -65,7 +65,11 @@ importers:
 
   packages/reporter: {}
 
-  packages/venues: {}
+  packages/venues:
+    dependencies:
+      '@fpho/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 

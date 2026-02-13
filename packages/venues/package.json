@@ -5,9 +5,12 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "dependencies": {
+    "@fpho/core": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src test --ext .ts"
   }
 }
