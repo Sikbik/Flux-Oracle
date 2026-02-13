@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
+    "@fpho/core": "workspace:*",
     "better-sqlite3": "^11.8.1"
   },
   "devDependencies": {
