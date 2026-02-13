@@ -1,1 +1,1 @@
-export const PACKAGE_NAME = '@fpho/p2p';
+export { derivePublicKey, signMessage, verifySignature } from './signing.js';

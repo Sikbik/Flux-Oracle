@@ -5,9 +5,12 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "dependencies": {
+    "@noble/curves": "^1.9.7"
+  },
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src test --ext .ts"
   }
 }
