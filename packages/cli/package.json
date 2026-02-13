@@ -5,9 +5,17 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "fpho-verify": "dist/main.js"
+  },
+  "dependencies": {
+    "@fpho/core": "workspace:*",
+    "@fpho/p2p": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src test --ext .ts",
+    "fpho-verify": "node dist/main.js"
   }
 }

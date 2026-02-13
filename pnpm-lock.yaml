@@ -93,7 +93,14 @@ importers:
         specifier: ^7.6.12
         version: 7.6.13
 
-  packages/cli: {}
+  packages/cli:
+    dependencies:
+      '@fpho/core':
+        specifier: workspace:*
+        version: link:../core
+      '@fpho/p2p':
+        specifier: workspace:*
+        version: link:../p2p
 
   packages/core: {}
 

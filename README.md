@@ -85,5 +85,6 @@ curl 'http://localhost:3000/metrics'
 ## Verification Quickstart (planned CLI)
 
 ```bash
-pnpm --filter @fpho/cli run fpho-verify --pair FLUXUSD --hour 1707346800
+pnpm --filter @fpho/cli build
+pnpm --filter @fpho/cli run fpho-verify --pair FLUXUSD --hour 1707346800 --registry ./data/reporter_registry.json --check-minute-root
 ```
