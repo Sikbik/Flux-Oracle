@@ -7,6 +7,7 @@ FPHO provides minute-grade FLUXUSD fair market values and commits hourly reports
 - Node.js `20.x`
 - `pnpm`
 - TypeScript with `strict: true`
+- SQLite for MVP storage
 
 ## Monorepo Layout
 
@@ -25,9 +26,17 @@ FPHO provides minute-grade FLUXUSD fair market values and commits hourly reports
 
 ```bash
 pnpm install
+pnpm db:migrate
 pnpm lint
 pnpm test
 pnpm build
+```
+
+## Database Commands
+
+```bash
+pnpm db:migrate
+pnpm db:reset
 ```
 
 ## API Quickstart (planned endpoints)

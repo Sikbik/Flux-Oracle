@@ -1,1 +1,7 @@
-export const PACKAGE_NAME = '@fpho/api';
+export {
+  resetDatabase,
+  resolveDbPath,
+  resolveMigrationsDir,
+  runMigrations,
+  type MigrationOptions
+} from './db/migrations.js';
