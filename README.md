@@ -64,6 +64,10 @@ Available endpoints:
 ```bash
 curl 'http://localhost:3000/v1/price_at?pair=FLUXUSD&ts=1707350467'
 curl 'http://localhost:3000/v1/minutes?pair=FLUXUSD&start=1707346800&end=1707350400&limit=120'
+curl 'http://localhost:3000/v1/anchors?pair=FLUXUSD&start_hour=1707346800&end_hour=1707350400'
+curl 'http://localhost:3000/v1/hours?pair=FLUXUSD&start=1707346800&end=1707350400'
+curl 'http://localhost:3000/v1/report/FLUXUSD/1707346800'
+curl 'http://localhost:3000/v1/verify/FLUXUSD/1707346800'
 curl 'http://localhost:3000/v1/methodology'
 curl 'http://localhost:3000/healthz'
 curl 'http://localhost:3000/metrics'

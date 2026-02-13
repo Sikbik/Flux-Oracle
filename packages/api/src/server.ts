@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import Fastify, { type FastifyInstance } from 'fastify';
 
-import { toMinuteTs } from '@fpho/core';
+import { decodeOpReturnPayload, toMinuteTs } from '@fpho/core';
 
 import { DEFAULT_METHODOLOGY, type MethodologyDefinition } from './methodology.js';
 
@@ -26,6 +26,10 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       endpoints: [
         'GET /v1/price_at',
         'GET /v1/minutes',
+        'GET /v1/anchors',
+        'GET /v1/hours',
+        'GET /v1/report/:pair/:hour_ts',
+        'GET /v1/verify/:pair/:hour_ts',
         'GET /v1/methodology',
         'GET /healthz',
         'GET /metrics'
@@ -159,6 +163,445 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
     };
   });
 
+  app.get('/v1/anchors', async (request, reply) => {
+    const {
+      pair = methodology.pair,
+      start_hour,
+      end_hour,
+      limit = '100',
+      offset = '0'
+    } = request.query as {
+      pair?: string;
+      start_hour?: string;
+      end_hour?: string;
+      limit?: string;
+      offset?: string;
+    };
+
+    const resolvedLimit = Math.min(Math.max(Number(limit), 1), 1000);
+    const resolvedOffset = Math.max(Number(offset), 0);
+    const startHourTs = start_hour !== undefined ? Number(start_hour) : null;
+    const endHourTs = end_hour !== undefined ? Number(end_hour) : null;
+
+    if (
+      Number.isNaN(resolvedLimit) ||
+      Number.isNaN(resolvedOffset) ||
+      (startHourTs !== null && Number.isNaN(startHourTs)) ||
+      (endHourTs !== null && Number.isNaN(endHourTs)) ||
+      (startHourTs !== null && endHourTs !== null && startHourTs > endHourTs)
+    ) {
+      reply.code(400);
+      return { error: 'invalid_pagination_or_range' };
+    }
+
+    let sql = `
+      SELECT
+        txid,
+        pair,
+        hour_ts,
+        report_hash,
+        block_height,
+        block_hash,
+        confirmed,
+        ipfs_cid,
+        ipfs_mirror_url,
+        op_return_hex
+      FROM anchors
+      WHERE pair = ?
+    `;
+    const params: unknown[] = [pair];
+
+    if (startHourTs !== null) {
+      sql += ' AND hour_ts >= ?';
+      params.push(startHourTs);
+    }
+
+    if (endHourTs !== null) {
+      sql += ' AND hour_ts <= ?';
+      params.push(endHourTs);
+    }
+
+    sql += ' ORDER BY hour_ts ASC LIMIT ? OFFSET ?';
+    params.push(resolvedLimit, resolvedOffset);
+
+    const rows = db.prepare(sql).all(...params) as Array<{
+      txid: string;
+      pair: string;
+      hour_ts: number;
+      report_hash: string;
+      block_height: number | null;
+      block_hash: string | null;
+      confirmed: number;
+      ipfs_cid: string | null;
+      ipfs_mirror_url: string | null;
+      op_return_hex: string | null;
+    }>;
+
+    return {
+      pair,
+      start_hour: startHourTs,
+      end_hour: endHourTs,
+      limit: resolvedLimit,
+      offset: resolvedOffset,
+      items: rows.map((row) => ({
+        txid: row.txid,
+        pair: row.pair,
+        hour_ts: row.hour_ts,
+        report_hash: row.report_hash,
+        block_height: row.block_height,
+        block_hash: row.block_hash,
+        confirmed: row.confirmed === 1,
+        ipfs_cid: row.ipfs_cid,
+        ipfs_mirror_url: row.ipfs_mirror_url,
+        op_return_hex: row.op_return_hex
+      }))
+    };
+  });
+
+  app.get('/v1/hours', async (request, reply) => {
+    const {
+      pair = methodology.pair,
+      start,
+      end,
+      limit = '100',
+      offset = '0'
+    } = request.query as {
+      pair?: string;
+      start?: string;
+      end?: string;
+      limit?: string;
+      offset?: string;
+    };
+
+    if (!start || !end || Number.isNaN(Number(start)) || Number.isNaN(Number(end))) {
+      reply.code(400);
+      return {
+        error: 'invalid_range'
+      };
+    }
+
+    const startTs = Number(start);
+    const endTs = Number(end);
+    const resolvedLimit = Math.min(Math.max(Number(limit), 1), 1000);
+    const resolvedOffset = Math.max(Number(offset), 0);
+
+    if (startTs > endTs || Number.isNaN(resolvedLimit) || Number.isNaN(resolvedOffset)) {
+      reply.code(400);
+      return {
+        error: 'invalid_pagination_or_range'
+      };
+    }
+
+    const rows = db
+      .prepare(
+        `
+          SELECT
+            h.hour_ts,
+            h.open_fp,
+            h.high_fp,
+            h.low_fp,
+            h.close_fp,
+            h.minute_root,
+            h.report_hash,
+            h.ruleset_version,
+            h.signatures_json,
+            a.txid AS anchor_txid,
+            a.confirmed AS anchor_confirmed
+          FROM hour_reports h
+          LEFT JOIN anchors a
+            ON a.pair = h.pair
+            AND a.hour_ts = h.hour_ts
+          WHERE h.pair = ?
+            AND h.hour_ts >= ?
+            AND h.hour_ts <= ?
+          ORDER BY h.hour_ts ASC
+          LIMIT ?
+          OFFSET ?
+        `
+      )
+      .all(pair, startTs, endTs, resolvedLimit, resolvedOffset) as Array<{
+      hour_ts: number;
+      open_fp: string | null;
+      high_fp: string | null;
+      low_fp: string | null;
+      close_fp: string | null;
+      minute_root: string;
+      report_hash: string;
+      ruleset_version: string;
+      signatures_json: string | null;
+      anchor_txid: string | null;
+      anchor_confirmed: number | null;
+    }>;
+
+    return {
+      pair,
+      start: startTs,
+      end: endTs,
+      limit: resolvedLimit,
+      offset: resolvedOffset,
+      items: rows.map((row) => ({
+        hour_ts: row.hour_ts,
+        open_fp: row.open_fp,
+        high_fp: row.high_fp,
+        low_fp: row.low_fp,
+        close_fp: row.close_fp,
+        minute_root: row.minute_root,
+        report_hash: row.report_hash,
+        ruleset_version: row.ruleset_version,
+        signatures_count: countSignatures(row.signatures_json),
+        anchored: row.anchor_txid !== null,
+        anchor_txid: row.anchor_txid,
+        anchor_confirmed: row.anchor_confirmed === 1
+      }))
+    };
+  });
+
+  app.get('/v1/report/:pair/:hour_ts', async (request, reply) => {
+    const params = request.params as { pair?: string; hour_ts?: string };
+
+    if (!params.pair || !params.hour_ts || Number.isNaN(Number(params.hour_ts))) {
+      reply.code(400);
+      return { error: 'invalid_report_key' };
+    }
+
+    const pair = params.pair;
+    const hourTs = Number(params.hour_ts);
+
+    const report = db
+      .prepare(
+        `
+          SELECT
+            pair,
+            hour_ts,
+            open_fp,
+            high_fp,
+            low_fp,
+            close_fp,
+            minute_root,
+            report_hash,
+            ruleset_version,
+            signatures_json,
+            created_at
+          FROM hour_reports
+          WHERE pair = ?
+            AND hour_ts = ?
+          LIMIT 1
+        `
+      )
+      .get(pair, hourTs) as
+      | {
+          pair: string;
+          hour_ts: number;
+          open_fp: string | null;
+          high_fp: string | null;
+          low_fp: string | null;
+          close_fp: string | null;
+          minute_root: string;
+          report_hash: string;
+          ruleset_version: string;
+          signatures_json: string | null;
+          created_at: number;
+        }
+      | undefined;
+
+    if (!report) {
+      reply.code(404);
+      return {
+        error: 'report_not_found',
+        pair,
+        hour_ts: hourTs
+      };
+    }
+
+    const anchor = db
+      .prepare(
+        `
+          SELECT
+            txid,
+            report_hash,
+            block_height,
+            block_hash,
+            confirmed,
+            ipfs_cid,
+            ipfs_mirror_url,
+            op_return_hex
+          FROM anchors
+          WHERE pair = ?
+            AND hour_ts = ?
+          LIMIT 1
+        `
+      )
+      .get(pair, hourTs) as
+      | {
+          txid: string;
+          report_hash: string;
+          block_height: number | null;
+          block_hash: string | null;
+          confirmed: number;
+          ipfs_cid: string | null;
+          ipfs_mirror_url: string | null;
+          op_return_hex: string | null;
+        }
+      | undefined;
+
+    return {
+      pair,
+      hour_ts: hourTs,
+      report: {
+        open_fp: report.open_fp,
+        high_fp: report.high_fp,
+        low_fp: report.low_fp,
+        close_fp: report.close_fp,
+        minute_root: report.minute_root,
+        report_hash: report.report_hash,
+        ruleset_version: report.ruleset_version,
+        signatures: parseSignatures(report.signatures_json),
+        created_at: report.created_at
+      },
+      anchor: anchor
+        ? {
+            txid: anchor.txid,
+            report_hash: anchor.report_hash,
+            block_height: anchor.block_height,
+            block_hash: anchor.block_hash,
+            confirmed: anchor.confirmed === 1,
+            ipfs_cid: anchor.ipfs_cid,
+            ipfs_mirror_url: anchor.ipfs_mirror_url,
+            op_return_hex: anchor.op_return_hex
+          }
+        : null
+    };
+  });
+
+  app.get('/v1/verify/:pair/:hour_ts', async (request, reply) => {
+    const params = request.params as { pair?: string; hour_ts?: string };
+
+    if (!params.pair || !params.hour_ts || Number.isNaN(Number(params.hour_ts))) {
+      reply.code(400);
+      return { error: 'invalid_report_key' };
+    }
+
+    const pair = params.pair;
+    const hourTs = Number(params.hour_ts);
+
+    const report = db
+      .prepare(
+        `
+          SELECT pair, hour_ts, close_fp, report_hash, signatures_json
+          FROM hour_reports
+          WHERE pair = ?
+            AND hour_ts = ?
+          LIMIT 1
+        `
+      )
+      .get(pair, hourTs) as
+      | {
+          pair: string;
+          hour_ts: number;
+          close_fp: string | null;
+          report_hash: string;
+          signatures_json: string | null;
+        }
+      | undefined;
+
+    if (!report) {
+      reply.code(404);
+      return {
+        error: 'report_not_found',
+        pair,
+        hour_ts: hourTs
+      };
+    }
+
+    const anchor = db
+      .prepare(
+        `
+          SELECT txid, report_hash, confirmed, op_return_hex
+          FROM anchors
+          WHERE pair = ?
+            AND hour_ts = ?
+          LIMIT 1
+        `
+      )
+      .get(pair, hourTs) as
+      | {
+          txid: string;
+          report_hash: string;
+          confirmed: number;
+          op_return_hex: string | null;
+        }
+      | undefined;
+
+    if (!anchor) {
+      reply.code(404);
+      return {
+        error: 'anchor_not_found',
+        pair,
+        hour_ts: hourTs
+      };
+    }
+
+    const expectedPairId = pairToId(pair);
+    const expectedSigBitmap = buildSignatureBitmap(report.signatures_json);
+
+    const checks = {
+      report_hash_match: anchor.report_hash === report.report_hash,
+      op_return_present:
+        typeof anchor.op_return_hex === 'string' && anchor.op_return_hex.length > 0,
+      op_return_decoded: false,
+      op_return_pair_match: false,
+      op_return_hour_match: false,
+      op_return_close_match: false,
+      op_return_report_hash_match: false,
+      op_return_sig_bitmap_match: false
+    };
+
+    let decodedPayload: {
+      pairId: number;
+      hourTs: number;
+      closeFp: string;
+      reportHash: string;
+      sigBitmap: number;
+    } | null = null;
+
+    if (checks.op_return_present && anchor.op_return_hex) {
+      try {
+        const decoded = decodeOpReturnPayload(Buffer.from(anchor.op_return_hex, 'hex'));
+        decodedPayload = {
+          pairId: decoded.pairId,
+          hourTs: decoded.hourTs,
+          closeFp: decoded.closeFp,
+          reportHash: decoded.reportHash,
+          sigBitmap: decoded.sigBitmap
+        };
+
+        checks.op_return_decoded = true;
+        checks.op_return_pair_match = expectedPairId === null || decoded.pairId === expectedPairId;
+        checks.op_return_hour_match = decoded.hourTs === report.hour_ts;
+        checks.op_return_close_match =
+          report.close_fp !== null && decoded.closeFp === report.close_fp;
+        checks.op_return_report_hash_match = decoded.reportHash === report.report_hash;
+        checks.op_return_sig_bitmap_match = decoded.sigBitmap === expectedSigBitmap;
+      } catch {
+        checks.op_return_decoded = false;
+      }
+    }
+
+    const verified = Object.values(checks).every((value) => value);
+
+    return {
+      pair,
+      hour_ts: hourTs,
+      verified,
+      checks,
+      anchor: {
+        txid: anchor.txid,
+        confirmed: anchor.confirmed === 1
+      },
+      decoded_payload: decodedPayload
+    };
+  });
+
   app.get('/v1/methodology', async () => methodology);
 
   app.get('/healthz', async () => ({ ok: true }));
@@ -170,4 +613,53 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
   });
 
   return app;
+}
+
+function parseSignatures(signaturesJson: string | null): Record<string, string> {
+  if (!signaturesJson) {
+    return {};
+  }
+
+  const parsed = JSON.parse(signaturesJson) as unknown;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return {};
+  }
+
+  const signatures: Record<string, string> = {};
+  for (const [id, value] of Object.entries(parsed)) {
+    if (typeof value === 'string') {
+      signatures[id] = value;
+    }
+  }
+
+  return signatures;
+}
+
+function countSignatures(signaturesJson: string | null): number {
+  return Object.keys(parseSignatures(signaturesJson)).length;
+}
+
+function buildSignatureBitmap(signaturesJson: string | null): number {
+  const sortedSignerIds = Object.keys(parseSignatures(signaturesJson)).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  if (sortedSignerIds.length > 32) {
+    return 0;
+  }
+
+  let bitmap = 0;
+  for (const [index] of sortedSignerIds.entries()) {
+    bitmap = (bitmap | (1 << index)) >>> 0;
+  }
+
+  return bitmap;
+}
+
+function pairToId(pair: string): number | null {
+  if (pair === 'FLUXUSD') {
+    return 1;
+  }
+
+  return null;
 }
