@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fpho
+      POSTGRES_USER: fpho
+      POSTGRES_PASSWORD: fpho
+    ports:
+      - '5432:5432'
+
+  api:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: >
+      bash -lc "corepack enable && corepack prepare pnpm@9.12.3 --activate &&
+      pnpm install &&
+      FPHO_DB_PATH=/workspace/data/fpho.sqlite pnpm db:migrate &&
+      FPHO_DB_PATH=/workspace/data/fpho.sqlite pnpm --filter @fpho/api start"
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+
+  reporter-1:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - quorum_data:/workspace/data/quorum-sim
+    environment:
+      FPHO_REPORTER_ID: reporter-1
+      FPHO_SIM_SHARED_DIR: /workspace/data/quorum-sim
+    command: >
+      bash -lc "corepack enable && corepack prepare pnpm@9.12.3 --activate &&
+      pnpm install &&
+      pnpm exec tsx scripts/reporter_sim.ts"
+
+  reporter-2:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - quorum_data:/workspace/data/quorum-sim
+    environment:
+      FPHO_REPORTER_ID: reporter-2
+      FPHO_SIM_SHARED_DIR: /workspace/data/quorum-sim
+    command: >
+      bash -lc "corepack enable && corepack prepare pnpm@9.12.3 --activate &&
+      pnpm install &&
+      pnpm exec tsx scripts/reporter_sim.ts"
+
+  reporter-3:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - quorum_data:/workspace/data/quorum-sim
+    environment:
+      FPHO_REPORTER_ID: reporter-3
+      FPHO_SIM_SHARED_DIR: /workspace/data/quorum-sim
+    command: >
+      bash -lc "corepack enable && corepack prepare pnpm@9.12.3 --activate &&
+      pnpm install &&
+      pnpm exec tsx scripts/reporter_sim.ts"
+
+  ipfs:
+    image: ipfs/kubo:latest
+    profiles: ['ipfs']
+    ports:
+      - '4001:4001'
+      - '5001:5001'
+      - '8080:8080'
+
+volumes:
+  quorum_data:

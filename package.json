@@ -14,12 +14,16 @@
     "test": "pnpm -r test",
     "build": "pnpm -r build",
     "db:migrate": "tsx scripts/db-migrate.ts",
-    "db:reset": "tsx scripts/db-reset.ts"
+    "db:reset": "tsx scripts/db-reset.ts",
+    "simulate:hour": "tsx scripts/simulate_hour.ts",
+    "simulate:quorum": "tsx scripts/reporter_sim.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.1",
     "@vitest/coverage-v8": "^3.0.5",
+    "better-sqlite3": "^11.8.1",
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^10.0.1",
     "prettier": "^3.5.0",

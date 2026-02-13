@@ -32,6 +32,19 @@ pnpm test
 pnpm build
 ```
 
+## Development Harness
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+pnpm simulate:hour
+```
+
+Reporter quorum simulation:
+
+```bash
+pnpm simulate:quorum
+```
+
 ## Database Commands
 
 ```bash
