@@ -1,0 +1,20 @@
+{
+  "version": 8,
+  "name": "fpho-api",
+  "description": "Flux Price History Oracle API service",
+  "owner": "<YOUR_ZELID>",
+  "compose": [
+    {
+      "name": "api",
+      "description": "Serves minute and anchor verification endpoints",
+      "repotag": "ghcr.io/sikbik/flux-oracle-api:latest",
+      "cpu": 1,
+      "ram": 1024,
+      "hdd": 20,
+      "ports": [3000],
+      "containerPorts": [3000],
+      "domains": [],
+      "environment": ["FPHO_API_PORT=3000", "FPHO_DB_PATH=/data/fpho.sqlite"]
+    }
+  ]
+}

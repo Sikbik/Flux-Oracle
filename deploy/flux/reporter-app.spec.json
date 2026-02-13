@@ -1,0 +1,21 @@
+{
+  "version": 8,
+  "name": "fpho-reporters",
+  "description": "Flux Price History Oracle reporter quorum",
+  "owner": "<YOUR_ZELID>",
+  "compose": [
+    {
+      "name": "reporter",
+      "description": "Reporter node used for hourly quorum signing",
+      "repotag": "ghcr.io/sikbik/flux-oracle-api:latest",
+      "cpu": 1,
+      "ram": 1024,
+      "hdd": 20,
+      "ports": [18080],
+      "containerPorts": [18080],
+      "domains": [],
+      "environment": ["FPHO_REPORTER_ID=<SET_PER_INSTANCE>", "FPHO_DB_PATH=/data/fpho.sqlite"],
+      "instances": 3
+    }
+  ]
+}

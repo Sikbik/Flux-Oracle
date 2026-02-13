@@ -88,3 +88,45 @@ curl 'http://localhost:3000/metrics'
 pnpm --filter @fpho/cli build
 pnpm --filter @fpho/cli run fpho-verify --pair FLUXUSD --hour 1707346800 --registry ./data/reporter_registry.json --check-minute-root
 ```
+
+## Tax CSV Exports
+
+Input transactions JSON format:
+
+```json
+[
+  { "txid": "abc", "timestamp": 1707346812, "direction": "in", "amount": "2.00000000" },
+  { "txid": "def", "timestamp": 1707346899, "direction": "out", "amount": "3.00000000" }
+]
+```
+
+Export tax packs:
+
+```bash
+pnpm --filter @fpho/cli build
+pnpm --filter @fpho/cli run fpho-tax-export --input ./data/txs.json --out-dir ./data/tax-csv --base-url http://localhost:3000 --pair FLUXUSD
+```
+
+Generated files:
+
+- `full_ledger.csv`
+- `income.csv`
+- `disposals.csv`
+
+## FMV Rule + Audit Citation
+
+- FMV rule: the tax FMV for a transaction timestamp is the minute bucket reference price from `GET /v1/price_at`.
+- Audit citation: include `pair`, `hour_ts`, `report_hash`, and anchor `txid`; retain matching hourly report JSON, OP_RETURN decode output, and quorum verification output.
+
+## Deployment on Flux
+
+Deployment artifacts are under `deploy/`:
+
+- Docker images: `deploy/docker/Dockerfile.api`, `deploy/docker/Dockerfile.cli`
+- Flux app specs: `deploy/flux/api-app.spec.json`, `deploy/flux/reporter-app.spec.json`
+
+Scaling guidance:
+
+- Run reporters as quorum nodes only.
+- Keep client traffic on API nodes.
+- Scale API replicas for read load independently of reporter quorum size.

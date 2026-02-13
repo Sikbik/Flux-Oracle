@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "fpho-verify": "dist/main.js"
+    "fpho-verify": "dist/main.js",
+    "fpho-tax-export": "dist/main_tax.js"
   },
   "dependencies": {
     "@fpho/core": "workspace:*",
@@ -16,6 +17,7 @@
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src test --ext .ts",
-    "fpho-verify": "node dist/main.js"
+    "fpho-verify": "node dist/main.js",
+    "fpho-tax-export": "node dist/main_tax.js"
   }
 }

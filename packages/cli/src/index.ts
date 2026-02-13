@@ -376,3 +376,11 @@ function failedResult(checks: VerifyChecks): VerifyCommandResult {
     validSigners: []
   };
 }
+
+export {
+  runTaxCli,
+  runTaxExport,
+  taxUsageText,
+  type TaxExportInput,
+  type TaxExportResult
+} from './tax.js';

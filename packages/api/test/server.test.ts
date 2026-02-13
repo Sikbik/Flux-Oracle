@@ -201,6 +201,24 @@ describe('api endpoints', () => {
 
     await app.close();
   });
+
+  it('returns FMV and audit citation guidance in methodology endpoint', async () => {
+    const { app } = await createTestApp();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/methodology'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      pair: 'FLUXUSD',
+      fmvRuleStatement: expect.stringContaining('FMV'),
+      auditCitationSteps: expect.any(Array)
+    });
+
+    await app.close();
+  });
 });
 
 async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer> }> {
