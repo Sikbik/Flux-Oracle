@@ -15,6 +15,16 @@ export {
 
 export { sha256 } from './hash.js';
 
+export { buildMerkleRoot } from './merkle.js';
+
+export {
+  decodeOpReturnPayload,
+  encodeOpReturnPayload,
+  OpReturnCodecError,
+  payloadSizeBytes,
+  type OpReturnPayload
+} from './opReturn.js';
+
 export {
   canonicalizeHourlyReport,
   canonicalizeMinuteRecord,
