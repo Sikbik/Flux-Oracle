@@ -104,7 +104,21 @@ importers:
         specifier: ^1.9.7
         version: 1.9.7
 
-  packages/reporter: {}
+  packages/reporter:
+    dependencies:
+      '@fpho/p2p':
+        specifier: workspace:*
+        version: link:../p2p
+      better-sqlite3:
+        specifier: ^11.8.1
+        version: 11.10.0
+    devDependencies:
+      '@fpho/api':
+        specifier: workspace:*
+        version: link:../api
+      '@types/better-sqlite3':
+        specifier: ^7.6.12
+        version: 7.6.13
 
   packages/venues:
     dependencies:

@@ -1,1 +1,5 @@
-export const PACKAGE_NAME = '@fpho/reporter';
+export {
+  persistHourSignatures,
+  QuorumCoordinator,
+  type QuorumCoordinatorConfig
+} from './quorum.js';
