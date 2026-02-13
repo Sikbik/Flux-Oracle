@@ -1,0 +1,12 @@
+{
+  "type": "message",
+  "topic": "/market/match:FLUX-USDT",
+  "subject": "trade.l3match",
+  "data": {
+    "symbol": "FLUX-USDT",
+    "side": "buy",
+    "price": "0.62890000",
+    "size": "1.50000000",
+    "time": 1707350467000000000
+  }
+}

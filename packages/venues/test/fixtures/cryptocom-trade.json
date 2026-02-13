@@ -1,0 +1,16 @@
+{
+  "id": 11,
+  "method": "subscribe",
+  "code": 0,
+  "result": {
+    "instrument_name": "FLUX_USDT",
+    "data": [
+      {
+        "p": "0.62890000",
+        "q": "5.00000000",
+        "s": "BUY",
+        "t": 1707350467000
+      }
+    ]
+  }
+}

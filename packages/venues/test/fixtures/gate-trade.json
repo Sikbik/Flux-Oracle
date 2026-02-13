@@ -1,0 +1,16 @@
+{
+  "time": 1707350467,
+  "channel": "spot.trades",
+  "event": "update",
+  "result": [
+    {
+      "id": 1,
+      "create_time": 1707350467,
+      "create_time_ms": "1707350467123",
+      "side": "buy",
+      "currency_pair": "FLUX_USDT",
+      "amount": "3.00000000",
+      "price": "0.62890000"
+    }
+  ]
+}

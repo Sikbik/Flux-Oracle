@@ -6,7 +6,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@fpho/core": "workspace:*"
+    "@fpho/core": "workspace:*",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
   },
   "scripts": {
     "build": "tsc -b",
