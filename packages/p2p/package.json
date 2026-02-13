@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
+    "@fpho/core": "workspace:*",
     "@noble/curves": "^1.9.7"
   },
   "scripts": {

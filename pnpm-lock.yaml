@@ -97,6 +97,9 @@ importers:
 
   packages/p2p:
     dependencies:
+      '@fpho/core':
+        specifier: workspace:*
+        version: link:../core
       '@noble/curves':
         specifier: ^1.9.7
         version: 1.9.7
