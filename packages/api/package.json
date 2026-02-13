@@ -6,7 +6,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "better-sqlite3": "^11.8.1"
+    "@fpho/core": "workspace:*",
+    "better-sqlite3": "^11.8.1",
+    "fastify": "^5.6.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12"
@@ -14,6 +16,7 @@
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint src test --ext .ts"
+    "lint": "eslint src test --ext .ts",
+    "start": "node dist/main.js"
   }
 }

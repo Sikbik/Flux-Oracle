@@ -39,12 +39,21 @@ pnpm db:migrate
 pnpm db:reset
 ```
 
-## API Quickstart (planned endpoints)
+## API Quickstart
+
+```bash
+pnpm --filter @fpho/api build
+FPHO_DB_PATH=./data/fpho.sqlite pnpm --filter @fpho/api start
+```
+
+Available endpoints:
 
 ```bash
 curl 'http://localhost:3000/v1/price_at?pair=FLUXUSD&ts=1707350467'
 curl 'http://localhost:3000/v1/minutes?pair=FLUXUSD&start=1707346800&end=1707350400&limit=120'
 curl 'http://localhost:3000/v1/methodology'
+curl 'http://localhost:3000/healthz'
+curl 'http://localhost:3000/metrics'
 ```
 
 ## Verification Quickstart (planned CLI)
