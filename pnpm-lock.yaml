@@ -39,7 +39,18 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.11)(tsx@4.21.0)
 
-  packages/aggregator: {}
+  packages/aggregator:
+    dependencies:
+      better-sqlite3:
+        specifier: ^11.8.1
+        version: 11.10.0
+    devDependencies:
+      '@fpho/api':
+        specifier: workspace:*
+        version: link:../api
+      '@types/better-sqlite3':
+        specifier: ^7.6.12
+        version: 7.6.13
 
   packages/anchor: {}
 
