@@ -26,12 +26,28 @@ export class CryptoComAdapter extends WebSocketVenueAdapter {
     ];
   }
 
+  protected override getSubscribeDelayMs(): number {
+    return 1000;
+  }
+
   protected mapPairToVenueSymbol(pair: string): string {
     const symbol = this.symbolMap[pair as keyof typeof this.symbolMap];
     if (!symbol) {
       throw new Error(`unsupported pair for Crypto.com: ${pair}`);
     }
     return symbol;
+  }
+
+  protected override handleControlMessage(payload: unknown): boolean {
+    if (!isObject(payload) || payload.method !== 'public/heartbeat') {
+      return false;
+    }
+
+    const id = payload.id;
+    const heartbeatId =
+      typeof id === 'string' || typeof id === 'number' ? id : Date.now();
+    this.sendMessage({ id: heartbeatId, method: 'public/respond-heartbeat' });
+    return true;
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  CryptoComAdapter,
   MexcAdapter,
   normalizeRawTick,
   parseBinanceTickerMessage,
@@ -162,5 +163,25 @@ describe('adapter parsers', () => {
       price: '62890000',
       side: 'buy'
     });
+  });
+
+  it('responds to crypto.com heartbeat frames', () => {
+    class TestAdapter extends CryptoComAdapter {
+      sent: unknown[] = [];
+
+      public handle(payload: unknown): boolean {
+        return this.handleControlMessage(payload);
+      }
+
+      protected override sendMessage(message: unknown): void {
+        this.sent.push(message);
+      }
+    }
+
+    const adapter = new TestAdapter();
+    const handled = adapter.handle({ id: 42, method: 'public/heartbeat' });
+
+    expect(handled).toBe(true);
+    expect(adapter.sent).toEqual([{ id: 42, method: 'public/respond-heartbeat' }]);
   });
 });

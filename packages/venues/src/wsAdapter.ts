@@ -74,12 +74,27 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
   protected abstract parseMessage(payload: unknown): NormalizationInput[];
 
+  protected handleControlMessage(payload: unknown): boolean {
+    void payload;
+    return false;
+  }
+
+  protected getSubscribeDelayMs(): number {
+    return 0;
+  }
+
   protected getPingIntervalMs(): number | null {
     return null;
   }
 
   protected buildPingMessage(): unknown | null {
     return null;
+  }
+
+  protected sendMessage(message: unknown): void {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(message));
+    }
   }
 
   protected async resolveWsUrl(): Promise<string> {
@@ -133,6 +148,10 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
       return;
     }
 
+    if (this.handleControlMessage(payload)) {
+      return;
+    }
+
     const ticks = this.parseMessage(payload);
     for (const tick of ticks) {
       this.emitTick(normalizeRawTick(tick));
@@ -140,11 +159,25 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
   }
 
   private sendSubscriptionsForPair(pair: string): void {
-    const venueSymbol = this.mapPairToVenueSymbol(pair);
-    const messages = this.buildSubscribeMessages(venueSymbol);
-    for (const message of messages) {
-      this.socket?.send(JSON.stringify(message));
+    const delay = this.getSubscribeDelayMs();
+    const send = () => {
+      if (this.socket?.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      const venueSymbol = this.mapPairToVenueSymbol(pair);
+      const messages = this.buildSubscribeMessages(venueSymbol);
+      for (const message of messages) {
+        this.sendMessage(message);
+      }
+    };
+
+    if (delay > 0) {
+      setTimeout(send, delay);
+      return;
     }
+
+    send();
   }
 
   private scheduleReconnectIfNeeded(): void {

@@ -36,7 +36,7 @@ describe('api endpoints', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
-    expect(response.body).toContain('Flux Oracle Live');
+    expect(response.body).toContain('Flux Oracle Terminal');
 
     await app.close();
   });
