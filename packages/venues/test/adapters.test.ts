@@ -54,6 +54,21 @@ describe('adapter parsers', () => {
     });
   });
 
+  it('parses binance book ticker without event field', () => {
+    const ticks = parseBinanceTickerMessage({
+      u: 1052676331,
+      s: 'FLUXUSDT',
+      b: '0.0734',
+      a: '0.0735'
+    });
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'binance',
+      pair: 'FLUXUSD',
+      price: '7350000'
+    });
+  });
+
   it('parses kraken trade fixture', () => {
     const ticks = parseKrakenTradeMessage(loadFixture('kraken-trade.json'));
     expect(ticks).toHaveLength(1);

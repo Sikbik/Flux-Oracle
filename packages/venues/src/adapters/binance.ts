@@ -70,10 +70,18 @@ export function parseBinanceTickerMessage(payload: unknown): NormalizationInput[
     return [];
   }
 
+  const event = payload.e;
+  const hasBookShape =
+    event === undefined &&
+    payload.s !== undefined &&
+    payload.u !== undefined &&
+    (payload.a !== undefined || payload.b !== undefined);
+
   if (
-    payload.e !== '24hrMiniTicker' &&
-    payload.e !== '24hrTicker' &&
-    payload.e !== 'bookTicker'
+    !hasBookShape &&
+    event !== '24hrMiniTicker' &&
+    event !== '24hrTicker' &&
+    event !== 'bookTicker'
   ) {
     return [];
   }
