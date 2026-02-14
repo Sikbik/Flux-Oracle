@@ -448,8 +448,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         z-index: 4;
         left: 0;
         top: 0;
-        transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px))
-          translate(-50%, calc(-100% - 14px));
+        transform: translate3d(calc(var(--x) * 1px), calc(var(--y) * 1px), 0);
         padding: 10px 12px;
         border-radius: 16px;
         border: 1px solid rgba(76, 255, 194, 0.22);
@@ -459,6 +458,13 @@ export const DASHBOARD_HTML = `<!doctype html>
         pointer-events: none;
         min-width: 190px;
         font-family: 'JetBrains Mono', monospace;
+      }
+
+      #tooltip-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        pointer-events: none;
       }
 
       .tt-kicker {
@@ -952,11 +958,6 @@ export const DASHBOARD_HTML = `<!doctype html>
                 <rect id="sparkline-hit" x="0" y="0" width="1000" height="320"></rect>
               </svg>
             </div>
-            <div class="chart-tooltip" id="chart-tooltip" hidden>
-              <div class="tt-kicker" id="tt-kicker">hover</div>
-              <div class="tt-price" id="tt-price">--</div>
-              <div class="tt-meta" id="tt-meta">--</div>
-            </div>
           </div>
           <div class="chart-axis">
             <span id="axis-start">--</span>
@@ -1037,6 +1038,14 @@ export const DASHBOARD_HTML = `<!doctype html>
       <span>Local API feed · UTC timeline · Per-minute venue drilldown</span>
       <span>Flux Oracle UI</span>
     </footer>
+
+    <div id="tooltip-layer" aria-hidden="true">
+      <div class="chart-tooltip" id="chart-tooltip" hidden>
+        <div class="tt-kicker" id="tt-kicker">hover</div>
+        <div class="tt-price" id="tt-price">--</div>
+        <div class="tt-meta" id="tt-meta">--</div>
+      </div>
+    </div>
 
     <script>
       const state = {
@@ -1224,6 +1233,32 @@ export const DASHBOARD_HTML = `<!doctype html>
         const hit = el('sparkline-hit');
         if (!svg || !hit) return;
 
+        const placeRunwayTooltip = (xClient, yClient) => {
+          const tooltip = el('chart-tooltip');
+          if (!tooltip) return;
+
+          // The hidden attribute maps to display:none, so we need it visible to measure.
+          tooltip.hidden = false;
+          const ttRect = tooltip.getBoundingClientRect();
+          const w = ttRect.width || 220;
+          const h = ttRect.height || 86;
+          const padding = 14;
+          const offset = 16;
+
+          let left = xClient - w / 2;
+          let top = yClient - h - offset;
+
+          if (top < padding) top = yClient + offset;
+
+          const maxLeft = window.innerWidth - w - padding;
+          const maxTop = window.innerHeight - h - padding;
+          left = clamp(left, padding, Math.max(padding, maxLeft));
+          top = clamp(top, padding, Math.max(padding, maxTop));
+
+          tooltip.style.setProperty('--x', String(left));
+          tooltip.style.setProperty('--y', String(top));
+        };
+
         const onMove = (event) => {
           if (!state.runwayMeta || !state.runwaySeries || state.runwaySeries.length < 2) {
             return;
@@ -1274,15 +1309,6 @@ export const DASHBOARD_HTML = `<!doctype html>
             }
           }
 
-          const tooltip = el('chart-tooltip');
-          if (tooltip) {
-            const xPx = clamp(relX * rect.width, 98, rect.width - 98);
-            const yPxSafe = clamp(yPx, 54, rect.height - 14);
-            tooltip.style.setProperty('--x', String(xPx));
-            tooltip.style.setProperty('--y', String(yPxSafe));
-            tooltip.hidden = false;
-          }
-
           setText('tt-kicker', fmtMinute(entry.ts) + ' UTC');
           setText(
             'tt-price',
@@ -1293,6 +1319,8 @@ export const DASHBOARD_HTML = `<!doctype html>
           const status = entry.degraded ? 'degraded' : 'ok';
           const reason = entry.degraded && entry.degradedReason ? ' · ' + entry.degradedReason : '';
           setText('tt-meta', 'venues ' + coverage + ' · ' + status + reason);
+
+          placeRunwayTooltip(rect.left + relX * rect.width, rect.top + yPx);
         };
 
         const onLeave = () => restoreRunwayIdle();
