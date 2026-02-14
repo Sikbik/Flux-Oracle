@@ -65,14 +65,23 @@ export function parseCryptoComTradeMessage(payload: unknown): NormalizationInput
 
   return payload.result.data
     .filter((entry) => isObject(entry))
-    .map((entry) => ({
-      pair: 'FLUXUSD',
-      venue: 'crypto_com',
-      ts: typeof entry.t === 'string' || typeof entry.t === 'number' ? entry.t : 0,
-      price: String(entry.p),
-      size: String(entry.q),
-      side: String(entry.s)
-    }));
+    .flatMap((entry) => {
+      if (entry.p === undefined || entry.p === null) {
+        return [];
+      }
+
+      const ts = entry.t ?? 0;
+      return [
+        {
+          pair: 'FLUXUSD',
+          venue: 'crypto_com',
+          ts: typeof ts === 'string' || typeof ts === 'number' ? ts : 0,
+          price: String(entry.p),
+          size: entry.q === undefined ? undefined : String(entry.q),
+          side: entry.s === undefined ? null : String(entry.s)
+        }
+      ];
+    });
 }
 
 export function parseCryptoComTickerMessage(payload: unknown): NormalizationInput[] {
