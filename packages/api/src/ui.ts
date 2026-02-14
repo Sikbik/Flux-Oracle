@@ -236,6 +236,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         content: '';
         position: absolute;
         inset: 0;
+        border-radius: inherit;
         background: radial-gradient(circle at top, rgba(40, 240, 165, 0.18), transparent 55%);
         opacity: 0.8;
         pointer-events: none;
@@ -383,16 +384,22 @@ export const DASHBOARD_HTML = `<!doctype html>
       .chart-stage {
         position: relative;
         border-radius: calc(var(--radius-md) - 2px);
-        overflow: hidden;
+        overflow: visible;
         background: radial-gradient(circle at 18% 22%, rgba(89, 165, 255, 0.1), transparent 58%),
           radial-gradient(circle at 70% 10%, rgba(40, 240, 165, 0.12), transparent 50%),
           linear-gradient(180deg, rgba(3, 5, 9, 0.9) 0%, rgba(5, 6, 11, 0.5) 100%);
         border: 1px solid rgba(231, 242, 255, 0.08);
       }
 
+      .chart-viewport {
+        border-radius: inherit;
+        overflow: hidden;
+      }
+
       #sparkline {
         width: 100%;
         height: 260px;
+        display: block;
       }
 
       #sparkline-path {
@@ -908,41 +915,43 @@ export const DASHBOARD_HTML = `<!doctype html>
             </button>
           </div>
           <div class="chart-stage" id="chart-stage">
-            <svg
-              id="sparkline"
-              viewBox="0 0 1000 320"
-              preserveAspectRatio="none"
-              role="img"
-              aria-label="Minute reference price runway"
-            >
-              <defs>
-                <linearGradient id="sparkline-gradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#ffd166" stop-opacity="0.45" />
-                  <stop offset="70%" stop-color="#05060b" stop-opacity="0.05" />
-                  <stop offset="100%" stop-color="#05060b" stop-opacity="0" />
-                </linearGradient>
-                <filter id="sparkline-soft-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feColorMatrix
-                    in="blur"
-                    type="matrix"
-                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -6"
-                    result="glow"
-                  />
-                  <feMerge>
-                    <feMergeNode in="glow" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              <path id="sparkline-area" d=""></path>
-              <path id="sparkline-path-glow" d="" filter="url(#sparkline-soft-glow)"></path>
-              <path id="sparkline-path" d=""></path>
-              <line id="sparkline-xhair" x1="0" y1="0" x2="0" y2="320" opacity="0"></line>
-              <line id="sparkline-yhair" x1="0" y1="0" x2="1000" y2="0" opacity="0"></line>
-              <circle id="sparkline-dot" r="6" cx="0" cy="0" opacity="0"></circle>
-              <rect id="sparkline-hit" x="0" y="0" width="1000" height="320"></rect>
-            </svg>
+            <div class="chart-viewport">
+              <svg
+                id="sparkline"
+                viewBox="0 0 1000 320"
+                preserveAspectRatio="none"
+                role="img"
+                aria-label="Minute reference price runway"
+              >
+                <defs>
+                  <linearGradient id="sparkline-gradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#ffd166" stop-opacity="0.45" />
+                    <stop offset="70%" stop-color="#05060b" stop-opacity="0.05" />
+                    <stop offset="100%" stop-color="#05060b" stop-opacity="0" />
+                  </linearGradient>
+                  <filter id="sparkline-soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feColorMatrix
+                      in="blur"
+                      type="matrix"
+                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -6"
+                      result="glow"
+                    />
+                    <feMerge>
+                      <feMergeNode in="glow" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <path id="sparkline-area" d=""></path>
+                <path id="sparkline-path-glow" d="" filter="url(#sparkline-soft-glow)"></path>
+                <path id="sparkline-path" d=""></path>
+                <line id="sparkline-xhair" x1="0" y1="0" x2="0" y2="320" opacity="0"></line>
+                <line id="sparkline-yhair" x1="0" y1="0" x2="1000" y2="0" opacity="0"></line>
+                <circle id="sparkline-dot" r="6" cx="0" cy="0" opacity="0"></circle>
+                <rect id="sparkline-hit" x="0" y="0" width="1000" height="320"></rect>
+              </svg>
+            </div>
             <div class="chart-tooltip" id="chart-tooltip" hidden>
               <div class="tt-kicker" id="tt-kicker">hover</div>
               <div class="tt-price" id="tt-price">--</div>
