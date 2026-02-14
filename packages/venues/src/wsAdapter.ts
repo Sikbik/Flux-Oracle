@@ -1,3 +1,5 @@
+import { gunzipSync } from 'node:zlib';
+
 import WebSocket from 'ws';
 
 import { BaseVenueAdapter } from './adapter.js';
@@ -121,7 +123,7 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
       });
 
       socket.on('message', (data) => {
-        this.handleSocketMessage(data.toString());
+        this.handleSocketMessage(data);
       });
 
       socket.on('close', () => {
@@ -140,11 +142,9 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
     });
   }
 
-  private handleSocketMessage(raw: string): void {
-    let payload: unknown;
-    try {
-      payload = JSON.parse(raw);
-    } catch {
+  private handleSocketMessage(raw: WebSocket.RawData): void {
+    const payload = this.decodePayload(raw);
+    if (!payload) {
       return;
     }
 
@@ -156,6 +156,46 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
     for (const tick of ticks) {
       this.emitTick(normalizeRawTick(tick));
     }
+  }
+
+  private decodePayload(raw: WebSocket.RawData): unknown | null {
+    const text = this.decodeRawMessage(raw);
+    if (!text) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+
+  private decodeRawMessage(raw: WebSocket.RawData): string | null {
+    if (typeof raw === 'string') {
+      return raw;
+    }
+
+    let buffer: Buffer;
+    if (Buffer.isBuffer(raw)) {
+      buffer = raw;
+    } else if (raw instanceof ArrayBuffer) {
+      buffer = Buffer.from(raw);
+    } else if (Array.isArray(raw)) {
+      buffer = Buffer.concat(raw);
+    } else {
+      return null;
+    }
+
+    if (buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+      try {
+        return gunzipSync(buffer).toString('utf8');
+      } catch {
+        return buffer.toString('utf8');
+      }
+    }
+
+    return buffer.toString('utf8');
   }
 
   private sendSubscriptionsForPair(pair: string): void {

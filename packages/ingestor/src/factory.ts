@@ -1,7 +1,9 @@
 import {
   BinanceAdapter,
+  CoinExAdapter,
   CryptoComAdapter,
   GateAdapter,
+  HtxAdapter,
   KrakenAdapter,
   KuCoinAdapter,
   MexcAdapter,
@@ -14,7 +16,9 @@ const ADAPTER_FACTORIES: Record<string, () => VenueAdapter> = {
   gate: () => new GateAdapter(),
   kucoin: () => new KuCoinAdapter(),
   mexc: () => new MexcAdapter(),
-  crypto_com: () => new CryptoComAdapter()
+  crypto_com: () => new CryptoComAdapter(),
+  coinex: () => new CoinExAdapter(),
+  htx: () => new HtxAdapter()
 };
 
 export function createVenueAdapters(enabledVenues: string[]): VenueAdapter[] {

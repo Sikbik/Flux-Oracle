@@ -2,7 +2,16 @@ import type { IngestorConfig } from './types.js';
 
 const DEFAULT_DB_PATH = 'data/fpho.sqlite';
 const DEFAULT_PAIR = 'FLUXUSD';
-const DEFAULT_ENABLED_VENUES = ['binance', 'kraken', 'gate', 'kucoin', 'mexc', 'crypto_com'];
+const DEFAULT_ENABLED_VENUES = [
+  'binance',
+  'kraken',
+  'gate',
+  'kucoin',
+  'mexc',
+  'crypto_com',
+  'coinex',
+  'htx'
+];
 const DEFAULT_HEALTH_HOST = '0.0.0.0';
 
 export function loadIngestorConfigFromEnv(env: NodeJS.ProcessEnv = process.env): IngestorConfig {

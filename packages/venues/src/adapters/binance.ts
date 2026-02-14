@@ -1,7 +1,7 @@
 import type { NormalizationInput } from '../types.js';
 import { WebSocketVenueAdapter } from '../wsAdapter.js';
 
-const WS_URL = 'wss://stream.binance.com:9443/ws';
+const WS_URL = 'wss://stream.binance.com:443/ws';
 
 export class BinanceAdapter extends WebSocketVenueAdapter {
   readonly venueId = 'binance';

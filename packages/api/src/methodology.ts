@@ -13,7 +13,7 @@ export interface MethodologyDefinition {
 
 export const DEFAULT_METHODOLOGY: MethodologyDefinition = {
   pair: 'FLUXUSD',
-  venues: ['binance', 'kraken', 'gate', 'kucoin', 'mexc', 'crypto_com'],
+  venues: ['binance', 'kraken', 'gate', 'kucoin', 'mexc', 'crypto_com', 'coinex', 'htx'],
   perVenueRule: 'last_trade_in_minute',
   referenceRule: 'median_across_venues',
   minVenuesPerMinute: 2,

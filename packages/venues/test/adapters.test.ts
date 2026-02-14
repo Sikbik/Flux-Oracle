@@ -8,9 +8,13 @@ import {
   normalizeRawTick,
   parseBinanceTickerMessage,
   parseBinanceTradeMessage,
+  parseCoinExTradeMessage,
+  parseCryptoComTickerMessage,
   parseCryptoComTradeMessage,
   parseGateTickerMessage,
   parseGateTradeMessage,
+  parseHtxTickerMessage,
+  parseHtxTradeMessage,
   parseKrakenTickerMessage,
   parseKrakenTradeMessage,
   parseKuCoinTickerMessage,
@@ -162,6 +166,63 @@ describe('adapter parsers', () => {
       pair: 'FLUXUSD',
       price: '62890000',
       side: 'buy'
+    });
+  });
+
+  it('parses crypto.com ticker message', () => {
+    const ticks = parseCryptoComTickerMessage({
+      id: 22,
+      method: 'subscribe',
+      code: 0,
+      result: {
+        data: [
+          {
+            i: 'FLUX_USDT',
+            c: '0.6288',
+            a: '0.6290',
+            b: '0.6285',
+            t: 1707350467000
+          }
+        ]
+      }
+    });
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'crypto_com',
+      pair: 'FLUXUSD',
+      price: '62880000'
+    });
+  });
+
+  it('parses coinex trade fixture', () => {
+    const ticks = parseCoinExTradeMessage(loadFixture('coinex-trade.json'));
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'coinex',
+      pair: 'FLUXUSD',
+      price: '62890000',
+      side: 'buy'
+    });
+  });
+
+  it('parses htx trade fixture', () => {
+    const ticks = parseHtxTradeMessage(loadFixture('htx-trade.json'));
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'htx',
+      pair: 'FLUXUSD',
+      price: '62890000',
+      side: 'buy'
+    });
+  });
+
+  it('parses htx ticker message', () => {
+    const ticks = parseHtxTickerMessage(loadFixture('htx-ticker.json'));
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'htx',
+      pair: 'FLUXUSD',
+      price: '62910000'
     });
   });
 

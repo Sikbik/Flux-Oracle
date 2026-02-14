@@ -1,0 +1,17 @@
+{
+  "ch": "market.fluxusdt.trade.detail",
+  "ts": 1707350467000,
+  "tick": {
+    "id": 1707350467,
+    "ts": 1707350467000,
+    "data": [
+      {
+        "id": 1707350467000,
+        "ts": 1707350467000,
+        "amount": 5,
+        "price": 0.6289,
+        "direction": "buy"
+      }
+    ]
+  }
+}

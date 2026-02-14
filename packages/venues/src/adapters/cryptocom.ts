@@ -20,7 +20,7 @@ export class CryptoComAdapter extends WebSocketVenueAdapter {
         id: Date.now(),
         method: 'subscribe',
         params: {
-          channels: [`trade.${venueSymbol}`]
+          channels: [`trade.${venueSymbol}`, `ticker.${venueSymbol}`]
         }
       }
     ];
@@ -51,7 +51,10 @@ export class CryptoComAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return parseCryptoComTradeMessage(payload);
+    return [
+      ...parseCryptoComTradeMessage(payload),
+      ...parseCryptoComTickerMessage(payload)
+    ];
   }
 }
 
@@ -70,6 +73,40 @@ export function parseCryptoComTradeMessage(payload: unknown): NormalizationInput
       size: String(entry.q),
       side: String(entry.s)
     }));
+}
+
+export function parseCryptoComTickerMessage(payload: unknown): NormalizationInput[] {
+  if (!isObject(payload) || !isObject(payload.result) || !Array.isArray(payload.result.data)) {
+    return [];
+  }
+
+  return payload.result.data
+    .filter((entry) => isObject(entry))
+    .flatMap((entry) => {
+      const price =
+        entry.c ??
+        entry.k ??
+        entry.a ??
+        entry.b ??
+        entry.p ??
+        entry.price ??
+        entry.last ??
+        entry.mark;
+      if (price === undefined || price === null) {
+        return [];
+      }
+
+      const ts = entry.t ?? entry.ts ?? Date.now();
+      return [
+        {
+          pair: 'FLUXUSD',
+          venue: 'crypto_com',
+          ts: typeof ts === 'string' || typeof ts === 'number' ? ts : Date.now(),
+          price: String(price),
+          side: null
+        }
+      ];
+    });
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

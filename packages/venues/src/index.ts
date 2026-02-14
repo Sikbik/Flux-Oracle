@@ -6,8 +6,14 @@ export {
   parseBinanceTickerMessage,
   parseBinanceTradeMessage
 } from './adapters/binance.js';
-export { CryptoComAdapter, parseCryptoComTradeMessage } from './adapters/cryptocom.js';
+export { CoinExAdapter, parseCoinExTradeMessage } from './adapters/coinex.js';
+export {
+  CryptoComAdapter,
+  parseCryptoComTickerMessage,
+  parseCryptoComTradeMessage
+} from './adapters/cryptocom.js';
 export { GateAdapter, parseGateTickerMessage, parseGateTradeMessage } from './adapters/gate.js';
+export { HtxAdapter, parseHtxTickerMessage, parseHtxTradeMessage } from './adapters/htx.js';
 export {
   KrakenAdapter,
   parseKrakenTickerMessage,
