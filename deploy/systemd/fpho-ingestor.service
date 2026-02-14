@@ -1,0 +1,16 @@
+[Unit]
+Description=FPHO Ingestor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/Flux-Oracle
+EnvironmentFile=-/etc/fpho/fpho.env
+ExecStart=/usr/bin/node /root/Flux-Oracle/deploy/vps/fpho-ingestor.mjs
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+

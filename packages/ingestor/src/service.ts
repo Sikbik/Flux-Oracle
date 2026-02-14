@@ -25,6 +25,8 @@ export class IngestorService {
 
   private flushTimer: NodeJS.Timeout | undefined;
 
+  private pruneTimer: NodeJS.Timeout | undefined;
+
   private writer: RawTickWriter | undefined;
 
   private healthServer: Server | undefined;
@@ -61,6 +63,13 @@ export class IngestorService {
       this.flushQueue();
     }, this.config.flushIntervalMs);
 
+    if (this.config.rawTickRetentionSeconds > 0) {
+      this.pruneTimer = setInterval(() => {
+        this.pruneOldTicks();
+      }, this.config.rawTickPruneIntervalSeconds * 1000);
+      this.pruneOldTicks();
+    }
+
     await this.startHealthServer();
   }
 
@@ -68,6 +77,11 @@ export class IngestorService {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = undefined;
+    }
+
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+      this.pruneTimer = undefined;
     }
 
     this.flushQueue();
@@ -170,6 +184,20 @@ export class IngestorService {
 
     const toWrite = this.queue.splice(0, this.queue.length);
     this.writer.writeBatch(toWrite);
+  }
+
+  private pruneOldTicks(): void {
+    if (!this.writer || this.config.rawTickRetentionSeconds <= 0) {
+      return;
+    }
+
+    const nowTs = Math.floor(Date.now() / 1000);
+    const cutoffTs = nowTs - this.config.rawTickRetentionSeconds;
+    const pruned = this.writer.pruneTicksBefore(this.config.pair, cutoffTs);
+    if (pruned > 0) {
+      // Lightweight ops signal: deletion count should be steady once retention stabilizes.
+      console.log('[ingestor] pruned raw_ticks', { pruned, cutoffTs });
+    }
   }
 
   private async startHealthServer(): Promise<void> {

@@ -12,6 +12,8 @@ const DEFAULT_ENABLED_VENUES = [
   'coinex',
   'htx'
 ];
+const DEFAULT_RAW_TICK_RETENTION_SECONDS = 86_400; // 24h
+const DEFAULT_RAW_TICK_PRUNE_INTERVAL_SECONDS = 3_600; // 1h
 const DEFAULT_HEALTH_HOST = '0.0.0.0';
 
 export function loadIngestorConfigFromEnv(env: NodeJS.ProcessEnv = process.env): IngestorConfig {
@@ -29,6 +31,14 @@ export function loadIngestorConfigFromEnv(env: NodeJS.ProcessEnv = process.env):
     enabledVenues,
     batchSize: parsePositiveInt(env.FPHO_INGESTOR_BATCH_SIZE, 200),
     flushIntervalMs: parsePositiveInt(env.FPHO_INGESTOR_FLUSH_INTERVAL_MS, 1_000),
+    rawTickRetentionSeconds: parseNonNegativeInt(
+      env.FPHO_RAW_TICK_RETENTION_SECONDS,
+      DEFAULT_RAW_TICK_RETENTION_SECONDS
+    ),
+    rawTickPruneIntervalSeconds: parsePositiveInt(
+      env.FPHO_RAW_TICK_PRUNE_INTERVAL_SECONDS,
+      DEFAULT_RAW_TICK_PRUNE_INTERVAL_SECONDS
+    ),
     healthHost: env.FPHO_INGESTOR_HEALTH_HOST ?? DEFAULT_HEALTH_HOST,
     healthPort: parseNonNegativeInt(env.FPHO_INGESTOR_HEALTH_PORT, 8081)
   };

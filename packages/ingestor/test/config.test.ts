@@ -11,6 +11,8 @@ describe('ingestor config and factory', () => {
     expect(config.enabledVenues).toContain('binance');
     expect(config.batchSize).toBe(200);
     expect(config.flushIntervalMs).toBe(1000);
+    expect(config.rawTickRetentionSeconds).toBe(86_400);
+    expect(config.rawTickPruneIntervalSeconds).toBe(3_600);
     expect(config.healthHost).toBe('0.0.0.0');
   });
 
@@ -21,6 +23,8 @@ describe('ingestor config and factory', () => {
       FPHO_ENABLED_VENUES: 'binance,kraken',
       FPHO_INGESTOR_BATCH_SIZE: '10',
       FPHO_INGESTOR_FLUSH_INTERVAL_MS: '500',
+      FPHO_RAW_TICK_RETENTION_SECONDS: '0',
+      FPHO_RAW_TICK_PRUNE_INTERVAL_SECONDS: '30',
       FPHO_INGESTOR_HEALTH_HOST: '127.0.0.1',
       FPHO_INGESTOR_HEALTH_PORT: '9090'
     });
@@ -31,6 +35,8 @@ describe('ingestor config and factory', () => {
       enabledVenues: ['binance', 'kraken'],
       batchSize: 10,
       flushIntervalMs: 500,
+      rawTickRetentionSeconds: 0,
+      rawTickPruneIntervalSeconds: 30,
       healthHost: '127.0.0.1',
       healthPort: 9090
     });

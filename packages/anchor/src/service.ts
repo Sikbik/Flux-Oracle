@@ -51,7 +51,8 @@ interface HourReportRow {
 export async function anchorHourReport(
   options: AnchorHourReportOptions
 ): Promise<AnchorHourReportResult> {
-  const db = new Database(options.dbPath);
+  const db = new Database(options.dbPath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
 
   try {
     const report = loadHourReport(db, options.pair, options.hourTs);

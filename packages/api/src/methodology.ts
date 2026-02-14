@@ -14,14 +14,14 @@ export interface MethodologyDefinition {
 export const DEFAULT_METHODOLOGY: MethodologyDefinition = {
   pair: 'FLUXUSD',
   venues: ['binance', 'kraken', 'gate', 'kucoin', 'mexc', 'crypto_com', 'coinex', 'htx'],
-  perVenueRule: 'last_trade_in_minute',
+  perVenueRule: 'last_observation_in_minute',
   referenceRule: 'median_across_venues',
   minVenuesPerMinute: 2,
   outlierClipPct: 10,
   degradedPolicy: 'strict_null_on_insufficient_venues',
   graceSeconds: 15,
   fmvRuleStatement:
-    'FMV for a transaction timestamp is the FLUXUSD minute bucket reference_price_fp returned by /v1/price_at for that UTC second.',
+    'FMV for a transaction timestamp is the FLUXUSD minute bucket reference_price_fp returned by /v1/price_at for that UTC second (derived from each venue’s last observed tick in that minute, then medianed across venues).',
   auditCitationSteps: [
     'Record the pair, hour_ts, report_hash, and anchor txid for each pricing reference.',
     'Retain the hourly report JSON and matching OP_RETURN payload decode output.',

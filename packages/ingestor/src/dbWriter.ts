@@ -7,8 +7,11 @@ export class RawTickWriter {
 
   private readonly writeBatchStatement: (ticks: TickBatch) => void;
 
+  private readonly pruneOldTicksStatement: { run: (pair: string, cutoffTs: number) => number };
+
   constructor(dbPath: string) {
-    this.db = new Database(dbPath);
+    this.db = new Database(dbPath, { timeout: 5000 });
+    this.db.pragma('journal_mode = WAL');
 
     const insertTick = this.db.prepare(`
       INSERT INTO raw_ticks(pair, venue, ts, price_fp, size_fp, side, source)
@@ -27,6 +30,16 @@ export class RawTickWriter {
         });
       }
     });
+
+    const deleteOldTicks = this.db.prepare(`
+      DELETE FROM raw_ticks
+      WHERE pair = ?
+        AND ts < ?
+    `);
+
+    this.pruneOldTicksStatement = {
+      run: (pair: string, cutoffTs: number) => deleteOldTicks.run(pair, cutoffTs).changes
+    };
   }
 
   writeBatch(ticks: TickBatch): void {
@@ -35,6 +48,10 @@ export class RawTickWriter {
     }
 
     this.writeBatchStatement(ticks);
+  }
+
+  pruneTicksBefore(pair: string, cutoffTs: number): number {
+    return this.pruneOldTicksStatement.run(pair, cutoffTs);
   }
 
   close(): void {

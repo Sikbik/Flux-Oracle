@@ -23,7 +23,7 @@ export interface ApiServerOptions {
 
 export function createApiServer(options: ApiServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
-  const db = new Database(options.dbPath, { readonly: true });
+  const db = new Database(options.dbPath, { readonly: true, timeout: 5000 });
   const startedAt = Date.now();
   const methodology = options.methodology ?? DEFAULT_METHODOLOGY;
 

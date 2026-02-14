@@ -41,6 +41,9 @@ describe('ingestor integration', () => {
         enabledVenues: ['mock'],
         batchSize: 2,
         flushIntervalMs: 10_000,
+        rawTickRetentionSeconds: 0,
+        rawTickPruneIntervalSeconds: 3600,
+        healthHost: '127.0.0.1',
         healthPort: 0
       },
       {

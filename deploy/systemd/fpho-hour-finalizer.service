@@ -1,0 +1,17 @@
+[Unit]
+Description=FPHO Hour Finalizer
+After=network-online.target fpho-ingestor.service
+Wants=network-online.target
+Requires=fpho-ingestor.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/Flux-Oracle
+EnvironmentFile=-/etc/fpho/fpho.env
+ExecStart=/usr/bin/node /root/Flux-Oracle/deploy/vps/fpho-hour-finalizer.mjs
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+

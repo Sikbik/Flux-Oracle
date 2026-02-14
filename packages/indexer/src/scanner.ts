@@ -49,7 +49,8 @@ const DEFAULT_PAIR_BY_ID: Readonly<Record<number, string>> = {
 };
 
 export async function scanAnchors(options: IndexerScanOptions): Promise<IndexerScanResult> {
-  const db = new Database(options.dbPath);
+  const db = new Database(options.dbPath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
 
   try {
     ensureIndexerStateRow(db);

@@ -108,7 +108,8 @@ export function persistHourSignatures(
   signatures: Record<string, string>,
   reporterSetId: string
 ): void {
-  const db = new Database(dbPath);
+  const db = new Database(dbPath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
 
   try {
     db.prepare(
@@ -135,7 +136,8 @@ export function persistHourSignatures(
 
 export function persistReporterSet(dbPath: string, registry: ReporterRegistry): string {
   const reporterSetId = computeReporterSetId(registry);
-  const db = new Database(dbPath);
+  const db = new Database(dbPath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
 
   try {
     const normalized = normalizeRegistry(registry);

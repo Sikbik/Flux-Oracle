@@ -29,7 +29,7 @@ export function runMigrations(options: MigrationOptions = {}): string[] {
 
   mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  const db = new Database(dbPath);
+  const db = new Database(dbPath, { timeout: 5000 });
   db.pragma('journal_mode = WAL');
 
   try {

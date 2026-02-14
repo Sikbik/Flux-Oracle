@@ -124,7 +124,8 @@ export class HourlyReportFinalizer {
   private readonly db: Database.Database;
 
   constructor(private readonly config: HourlyFinalizerConfig) {
-    this.db = new Database(config.dbPath);
+    this.db = new Database(config.dbPath, { timeout: 5000 });
+    this.db.pragma('journal_mode = WAL');
   }
 
   close(): void {
