@@ -176,10 +176,13 @@ export class HourlyReportFinalizer {
             minute_root,
             report_hash,
             ruleset_version,
+            available_minutes,
+            degraded,
             signatures_json,
+            reporter_set_id,
             created_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, unixepoch())
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, unixepoch())
           ON CONFLICT(pair, hour_ts)
           DO UPDATE SET
             open_fp = excluded.open_fp,
@@ -189,7 +192,10 @@ export class HourlyReportFinalizer {
             minute_root = excluded.minute_root,
             report_hash = excluded.report_hash,
             ruleset_version = excluded.ruleset_version,
+            available_minutes = excluded.available_minutes,
+            degraded = excluded.degraded,
             signatures_json = excluded.signatures_json,
+            reporter_set_id = excluded.reporter_set_id,
             created_at = excluded.created_at
         `
       )
@@ -202,7 +208,9 @@ export class HourlyReportFinalizer {
         nullableString(build.report.close_fp),
         build.minuteRoot,
         build.reportHash,
-        this.config.rulesetVersion
+        this.config.rulesetVersion,
+        Number(build.report.available_minutes),
+        build.report.degraded ? 1 : 0
       );
 
     return build;

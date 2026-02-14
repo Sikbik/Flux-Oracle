@@ -6,6 +6,7 @@ export interface IngestorConfig {
   enabledVenues: string[];
   batchSize: number;
   flushIntervalMs: number;
+  healthHost: string;
   healthPort: number;
 }
 

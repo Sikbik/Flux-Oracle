@@ -17,6 +17,31 @@ export interface ReporterSetInfo {
   threshold: number;
 }
 
+export function sortedReporterIds(registry: ReporterRegistry): string[] {
+  validateRegistry(registry);
+  return [...registry.reporters]
+    .map((entry) => entry.id)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+export function buildSignatureBitmap(
+  registry: ReporterRegistry,
+  signaturesByReporterId: Readonly<Record<string, string>>
+): number {
+  const orderedIds = sortedReporterIds(registry);
+  if (orderedIds.length > 32) {
+    throw new Error('signature bitmap supports at most 32 signers');
+  }
+
+  let bitmap = 0;
+  for (const [index, reporterId] of orderedIds.entries()) {
+    if (signaturesByReporterId[reporterId]) {
+      bitmap = (bitmap | (1 << index)) >>> 0;
+    }
+  }
+  return bitmap;
+}
+
 export function computeReporterSetId(registry: ReporterRegistry): string {
   validateRegistry(registry);
 

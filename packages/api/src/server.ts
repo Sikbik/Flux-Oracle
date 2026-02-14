@@ -1,7 +1,17 @@
 import Database from 'better-sqlite3';
 import Fastify, { type FastifyInstance } from 'fastify';
 
-import { decodeOpReturnPayload, toMinuteTs } from '@fpho/core';
+import {
+  buildMerkleRoot,
+  decodeOpReturnPayload,
+  hashHourlyReport,
+  hashMinuteRecord,
+  minuteRange,
+  toMinuteTs,
+  type HourlyReport,
+  type MinuteRecord
+} from '@fpho/core';
+import { buildSignatureBitmap, hasQuorum, verifySignature, type ReporterRegistry } from '@fpho/p2p';
 
 import { DEFAULT_METHODOLOGY, type MethodologyDefinition } from './methodology.js';
 
@@ -304,6 +314,9 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
             h.minute_root,
             h.report_hash,
             h.ruleset_version,
+            h.available_minutes,
+            h.degraded,
+            h.reporter_set_id,
             h.signatures_json,
             a.txid AS anchor_txid,
             a.confirmed AS anchor_confirmed
@@ -328,6 +341,9 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       minute_root: string;
       report_hash: string;
       ruleset_version: string;
+      available_minutes: number;
+      degraded: number;
+      reporter_set_id: string | null;
       signatures_json: string | null;
       anchor_txid: string | null;
       anchor_confirmed: number | null;
@@ -348,6 +364,9 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
         minute_root: row.minute_root,
         report_hash: row.report_hash,
         ruleset_version: row.ruleset_version,
+        available_minutes: row.available_minutes,
+        degraded: row.degraded === 1,
+        reporter_set_id: row.reporter_set_id,
         signatures_count: countSignatures(row.signatures_json),
         anchored: row.anchor_txid !== null,
         anchor_txid: row.anchor_txid,
@@ -380,6 +399,9 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
             minute_root,
             report_hash,
             ruleset_version,
+            available_minutes,
+            degraded,
+            reporter_set_id,
             signatures_json,
             created_at
           FROM hour_reports
@@ -399,6 +421,9 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
           minute_root: string;
           report_hash: string;
           ruleset_version: string;
+          available_minutes: number;
+          degraded: number;
+          reporter_set_id: string | null;
           signatures_json: string | null;
           created_at: number;
         }
@@ -447,17 +472,11 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
     return {
       pair,
       hour_ts: hourTs,
-      report: {
-        open_fp: report.open_fp,
-        high_fp: report.high_fp,
-        low_fp: report.low_fp,
-        close_fp: report.close_fp,
-        minute_root: report.minute_root,
-        report_hash: report.report_hash,
-        ruleset_version: report.ruleset_version,
-        signatures: parseSignatures(report.signatures_json),
-        created_at: report.created_at
-      },
+      report: buildHourlyReportPayload(report),
+      report_hash: report.report_hash,
+      reporter_set_id: report.reporter_set_id,
+      signatures: parseSignatures(report.signatures_json),
+      created_at: report.created_at,
       anchor: anchor
         ? {
             txid: anchor.txid,
@@ -475,6 +494,7 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
 
   app.get('/v1/verify/:pair/:hour_ts', async (request, reply) => {
     const params = request.params as { pair?: string; hour_ts?: string };
+    const query = request.query as { check_minute_root?: string };
 
     if (!params.pair || !params.hour_ts || Number.isNaN(Number(params.hour_ts))) {
       reply.code(400);
@@ -483,11 +503,26 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
 
     const pair = params.pair;
     const hourTs = Number(params.hour_ts);
+    const checkMinuteRoot =
+      query.check_minute_root === '1' || query.check_minute_root === 'true';
 
     const report = db
       .prepare(
         `
-          SELECT pair, hour_ts, close_fp, report_hash, signatures_json
+          SELECT
+            pair,
+            hour_ts,
+            open_fp,
+            high_fp,
+            low_fp,
+            close_fp,
+            minute_root,
+            report_hash,
+            ruleset_version,
+            available_minutes,
+            degraded,
+            reporter_set_id,
+            signatures_json
           FROM hour_reports
           WHERE pair = ?
             AND hour_ts = ?
@@ -498,8 +533,16 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       | {
           pair: string;
           hour_ts: number;
+          open_fp: string | null;
+          high_fp: string | null;
+          low_fp: string | null;
           close_fp: string | null;
+          minute_root: string;
           report_hash: string;
+          ruleset_version: string;
+          available_minutes: number;
+          degraded: number;
+          reporter_set_id: string | null;
           signatures_json: string | null;
         }
       | undefined;
@@ -541,11 +584,37 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       };
     }
 
+    if (!report.reporter_set_id) {
+      reply.code(422);
+      return {
+        error: 'reporter_set_missing',
+        pair,
+        hour_ts: hourTs
+      };
+    }
+
+    let registry: ReporterRegistry;
+    try {
+      registry = loadReporterRegistry(db, report.reporter_set_id);
+    } catch {
+      reply.code(422);
+      return {
+        error: 'reporter_set_not_found',
+        pair,
+        hour_ts: hourTs
+      };
+    }
+
+    const reportPayload = buildHourlyReportPayload(report);
+    const computedReportHash = hashHourlyReport(reportPayload as HourlyReport);
+    const signatures = parseSignatures(report.signatures_json);
+
     const expectedPairId = pairToId(pair);
-    const expectedSigBitmap = buildSignatureBitmap(report.signatures_json);
+    const expectedSigBitmap = buildSignatureBitmap(registry, signatures);
 
     const checks = {
       report_hash_match: anchor.report_hash === report.report_hash,
+      report_hash_valid: computedReportHash === report.report_hash,
       op_return_present:
         typeof anchor.op_return_hex === 'string' && anchor.op_return_hex.length > 0,
       op_return_decoded: false,
@@ -553,7 +622,9 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       op_return_hour_match: false,
       op_return_close_match: false,
       op_return_report_hash_match: false,
-      op_return_sig_bitmap_match: false
+      op_return_sig_bitmap_match: false,
+      quorum_valid: false,
+      minute_root_match: true
     };
 
     let decodedPayload: {
@@ -587,6 +658,41 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       }
     }
 
+    const validSigners = await verifyQuorumSignatures(
+      registry,
+      hourTs,
+      report.report_hash,
+      signatures
+    );
+    checks.quorum_valid = hasQuorum(
+      registry,
+      Object.fromEntries(validSigners.map((id) => [id, 'valid']))
+    );
+
+    if (checkMinuteRoot) {
+      const minuteRows = db
+        .prepare(
+          `
+            SELECT minute_ts, reference_price_fp, venues_used, degraded, degraded_reason
+            FROM minute_prices
+            WHERE pair = ?
+              AND minute_ts >= ?
+              AND minute_ts <= ?
+            ORDER BY minute_ts ASC
+          `
+        )
+        .all(pair, hourTs, hourTs + 59 * 60) as Array<{
+        minute_ts: number;
+        reference_price_fp: string | null;
+        venues_used: number;
+        degraded: number;
+        degraded_reason: string | null;
+      }>;
+
+      const computedMinuteRoot = computeMinuteRoot(pair, hourTs, minuteRows);
+      checks.minute_root_match = computedMinuteRoot === report.minute_root;
+    }
+
     const verified = Object.values(checks).every((value) => value);
 
     return {
@@ -594,6 +700,10 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       hour_ts: hourTs,
       verified,
       checks,
+      report_hash: report.report_hash,
+      computed_report_hash: computedReportHash,
+      reporter_set_id: report.reporter_set_id,
+      valid_signers: validSigners,
       anchor: {
         txid: anchor.txid,
         confirmed: anchor.confirmed === 1
@@ -639,27 +749,128 @@ function countSignatures(signaturesJson: string | null): number {
   return Object.keys(parseSignatures(signaturesJson)).length;
 }
 
-function buildSignatureBitmap(signaturesJson: string | null): number {
-  const sortedSignerIds = Object.keys(parseSignatures(signaturesJson)).sort((left, right) =>
-    left.localeCompare(right)
-  );
-
-  if (sortedSignerIds.length > 32) {
-    return 0;
-  }
-
-  let bitmap = 0;
-  for (const [index] of sortedSignerIds.entries()) {
-    bitmap = (bitmap | (1 << index)) >>> 0;
-  }
-
-  return bitmap;
-}
-
 function pairToId(pair: string): number | null {
   if (pair === 'FLUXUSD') {
     return 1;
   }
 
   return null;
+}
+
+function buildHourlyReportPayload(report: {
+  pair: string;
+  hour_ts: number;
+  open_fp: string | null;
+  high_fp: string | null;
+  low_fp: string | null;
+  close_fp: string | null;
+  minute_root: string;
+  ruleset_version: string;
+  available_minutes: number;
+  degraded: number;
+}): HourlyReport {
+  return {
+    pair: report.pair,
+    hour_ts: report.hour_ts.toString(),
+    open_fp: report.open_fp,
+    high_fp: report.high_fp,
+    low_fp: report.low_fp,
+    close_fp: report.close_fp,
+    minute_root: report.minute_root,
+    ruleset_version: report.ruleset_version,
+    available_minutes: report.available_minutes.toString(),
+    degraded: report.degraded === 1
+  } satisfies HourlyReport;
+}
+
+function computeMinuteRoot(
+  pair: string,
+  hourTs: number,
+  minuteItems: Array<{
+    minute_ts: number;
+    reference_price_fp: string | null;
+    venues_used: number;
+    degraded: number;
+    degraded_reason: string | null;
+  }>
+): string {
+  const minuteMap = new Map(minuteItems.map((item) => [item.minute_ts, item]));
+
+  const minuteRecords = minuteRange(hourTs).map((minuteTs) => {
+    const minute = minuteMap.get(minuteTs);
+    const degraded = minute ? minute.degraded === 1 : true;
+
+    return {
+      pair,
+      minute_ts: minuteTs.toString(),
+      reference_price_fp: minute?.reference_price_fp ?? null,
+      venues_used: (minute?.venues_used ?? 0).toString(),
+      degraded,
+      degraded_reason: minute?.degraded_reason ?? 'missing_minute'
+    } satisfies MinuteRecord;
+  });
+
+  const hashes = minuteRecords.map((record) => hashMinuteRecord(record));
+  return buildMerkleRoot(hashes);
+}
+
+async function verifyQuorumSignatures(
+  registry: ReporterRegistry,
+  hourTs: number,
+  reportHash: string,
+  signatures: Record<string, string>
+): Promise<string[]> {
+  const reporterById = new Map(registry.reporters.map((entry) => [entry.id, entry.publicKey]));
+  const payload = signaturePayload(hourTs, reportHash);
+
+  const validSigners: string[] = [];
+
+  for (const [reporterId, signature] of Object.entries(signatures)) {
+    const publicKey = reporterById.get(reporterId);
+    if (!publicKey) {
+      continue;
+    }
+
+    try {
+      const valid = await verifySignature(payload, signature, publicKey);
+      if (valid) {
+        validSigners.push(reporterId);
+      }
+    } catch {
+      // Ignore malformed signatures and continue counting valid ones.
+    }
+  }
+
+  return validSigners.sort((left, right) => left.localeCompare(right));
+}
+
+function signaturePayload(hourTs: number, reportHash: string): string {
+  return `fpho:${hourTs}:${reportHash}`;
+}
+
+function loadReporterRegistry(
+  db: Database.Database,
+  reporterSetId: string
+): ReporterRegistry {
+  const row = db
+    .prepare(
+      `
+        SELECT reporters_json
+        FROM reporter_sets
+        WHERE reporter_set_id = ?
+        LIMIT 1
+      `
+    )
+    .get(reporterSetId) as { reporters_json: string } | undefined;
+
+  if (!row) {
+    throw new Error(`reporter set not found for ${reporterSetId}`);
+  }
+
+  const parsed = JSON.parse(row.reporters_json) as unknown;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('reporter_sets.reporters_json must be an object');
+  }
+
+  return parsed as ReporterRegistry;
 }

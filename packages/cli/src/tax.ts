@@ -47,6 +47,7 @@ interface TaxLedgerRow {
   timestamp: number;
   minuteTs: number;
   direction: 'in' | 'out';
+  asset: string;
   amountFlux: string;
   priceUsd: string;
   fmvUsd: string;
@@ -92,6 +93,7 @@ export async function runTaxExport(
       timestamp: tx.timestamp,
       minuteTs: priceAt.minute_ts,
       direction: tx.direction,
+      asset: tx.asset ?? '',
       amountFlux: tx.amount,
       priceUsd: formatFixedToDecimal(priceAt.reference_price_fp),
       fmvUsd: formatFixedToDecimal(fmvFp),
@@ -303,6 +305,7 @@ function toCsv(rows: readonly TaxLedgerRow[]): string {
     'timestamp',
     'minute_ts',
     'direction',
+    'asset',
     'amount_flux',
     'price_usd',
     'fmv_usd',
@@ -317,6 +320,7 @@ function toCsv(rows: readonly TaxLedgerRow[]): string {
       row.timestamp.toString(),
       row.minuteTs.toString(),
       row.direction,
+      row.asset,
       row.amountFlux,
       row.priceUsd,
       row.fmvUsd,

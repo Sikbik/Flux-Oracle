@@ -1,5 +1,6 @@
 export {
   persistHourSignatures,
+  persistReporterSet,
   QuorumCoordinator,
   type QuorumCoordinatorConfig
 } from './quorum.js';

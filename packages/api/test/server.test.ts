@@ -4,7 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { encodeOpReturnPayload } from '@fpho/core';
+import { encodeOpReturnPayload, hashHourlyReport, type HourlyReport } from '@fpho/core';
+import {
+  buildSignatureBitmap,
+  computeReporterSetId,
+  derivePublicKey,
+  signMessage,
+  type ReporterRegistry
+} from '@fpho/p2p';
 
 import { createApiServer, runMigrations } from '../src/index.js';
 
@@ -92,7 +99,7 @@ describe('api endpoints', () => {
   });
 
   it('returns anchored hour summaries in stable order', async () => {
-    const { app } = await createTestApp();
+    const { app, reportHash } = await createTestApp();
 
     const response = await app.inject({
       method: 'GET',
@@ -105,7 +112,7 @@ describe('api endpoints', () => {
       items: [
         {
           hour_ts: 1707346800,
-          report_hash: 'a'.repeat(64),
+          report_hash: reportHash,
           anchored: true,
           anchor_txid: 'txid-123'
         }
@@ -116,7 +123,7 @@ describe('api endpoints', () => {
   });
 
   it('returns anchors endpoint rows with payload fixture', async () => {
-    const { app } = await createTestApp();
+    const { app, reportHash } = await createTestApp();
 
     const response = await app.inject({
       method: 'GET',
@@ -130,7 +137,7 @@ describe('api endpoints', () => {
         {
           txid: 'txid-123',
           hour_ts: 1707346800,
-          report_hash: 'a'.repeat(64),
+          report_hash: reportHash,
           confirmed: true
         }
       ]
@@ -140,7 +147,7 @@ describe('api endpoints', () => {
   });
 
   it('returns full report payload by pair/hour', async () => {
-    const { app } = await createTestApp();
+    const { app, reportHash, reporterSetId } = await createTestApp();
 
     const response = await app.inject({
       method: 'GET',
@@ -152,17 +159,19 @@ describe('api endpoints', () => {
       pair: 'FLUXUSD',
       hour_ts: 1707346800,
       report: {
+        pair: 'FLUXUSD',
+        hour_ts: '1707346800',
         close_fp: '62750000',
-        report_hash: 'a'.repeat(64),
-        signatures: {
-          'reporter-a': 'sig-a',
-          'reporter-b': 'sig-b',
-          'reporter-c': 'sig-c'
-        }
+        minute_root: 'd'.repeat(64),
+        available_minutes: '60',
+        degraded: false
       },
+      report_hash: reportHash,
+      reporter_set_id: reporterSetId,
+      signatures: expect.any(Object),
       anchor: {
         txid: 'txid-123',
-        report_hash: 'a'.repeat(64),
+        report_hash: reportHash,
         confirmed: true
       }
     });
@@ -171,7 +180,7 @@ describe('api endpoints', () => {
   });
 
   it('verifies anchored report fixtures', async () => {
-    const { app } = await createTestApp();
+    const { app, reportHash, reporterSetId } = await createTestApp();
 
     const response = await app.inject({
       method: 'GET',
@@ -185,14 +194,19 @@ describe('api endpoints', () => {
       verified: true,
       checks: {
         report_hash_match: true,
+        report_hash_valid: true,
         op_return_present: true,
         op_return_decoded: true,
         op_return_pair_match: true,
         op_return_hour_match: true,
         op_return_close_match: true,
         op_return_report_hash_match: true,
-        op_return_sig_bitmap_match: true
+        op_return_sig_bitmap_match: true,
+        quorum_valid: true,
+        minute_root_match: true
       },
+      report_hash: reportHash,
+      reporter_set_id: reporterSetId,
       anchor: {
         txid: 'txid-123',
         confirmed: true
@@ -221,7 +235,17 @@ describe('api endpoints', () => {
   });
 });
 
-async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer> }> {
+const privateKeys = {
+  'reporter-1': '6c17f725f4fcd6d7b2f3a5a8b4ef7d1f2e5a2260bc257f8fef4d4d357ca8f35e',
+  'reporter-2': '7f2ea4ecf89758de6f4e6b932f85f88f84f2135ad7ef8bde0f4e5f5f38e30a0d',
+  'reporter-3': '4f9858cb6f8da9fd4aa9c45f2e8d9932d18c1df2ad7d6851124c596cb8f1795e'
+};
+
+async function createTestApp(): Promise<{
+  app: ReturnType<typeof createApiServer>;
+  reportHash: string;
+  reporterSetId: string;
+}> {
   const tempDir = mkdtempSync(path.join(tmpdir(), 'fpho-api-'));
   tempPaths.push(tempDir);
 
@@ -237,13 +261,33 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
     url: '/healthz'
   });
 
+  const registry = await buildRegistry();
+  const reporterSetId = computeReporterSetId(registry);
+  const reportPayload: HourlyReport = {
+    pair: 'FLUXUSD',
+    hour_ts: '1707346800',
+    open_fp: '62800000',
+    high_fp: '62900000',
+    low_fp: '62750000',
+    close_fp: '62750000',
+    minute_root: 'd'.repeat(64),
+    ruleset_version: 'v1',
+    available_minutes: '60',
+    degraded: false
+  };
+  const reportHash = hashHourlyReport(reportPayload);
+  const signatures = {
+    'reporter-1': await signMessage(`fpho:1707346800:${reportHash}`, privateKeys['reporter-1']),
+    'reporter-2': await signMessage(`fpho:1707346800:${reportHash}`, privateKeys['reporter-2'])
+  };
+  const sigBitmap = buildSignatureBitmap(registry, signatures);
   const opReturnHex = Buffer.from(
     encodeOpReturnPayload({
       pairId: 1,
       hourTs: 1707346800,
       closeFp: '62750000',
-      reportHash: 'a'.repeat(64),
-      sigBitmap: 7
+      reportHash,
+      sigBitmap
     })
   ).toString('hex');
 
@@ -253,6 +297,14 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
       ('FLUXUSD', 1707350460, '62900000', 2, 0, NULL),
       ('FLUXUSD', 1707350520, NULL, 1, 1, 'insufficient_venues'),
       ('FLUXUSD', 1707350580, '62880000', 3, 0, NULL);
+
+    INSERT INTO reporter_sets(reporter_set_id, reporters_json, threshold, created_at)
+    VALUES (
+      '${reporterSetId}',
+      '${JSON.stringify(registry)}',
+      ${registry.threshold},
+      unixepoch()
+    );
 
     INSERT INTO hour_reports(
       pair,
@@ -264,6 +316,9 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
       minute_root,
       report_hash,
       ruleset_version,
+      available_minutes,
+      degraded,
+      reporter_set_id,
       signatures_json,
       created_at
     ) VALUES (
@@ -274,13 +329,12 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
       '62750000',
       '62750000',
       '${'d'.repeat(64)}',
-      '${'a'.repeat(64)}',
+      '${reportHash}',
       'v1',
-      '${JSON.stringify({
-        'reporter-a': 'sig-a',
-        'reporter-b': 'sig-b',
-        'reporter-c': 'sig-c'
-      })}',
+      60,
+      0,
+      '${reporterSetId}',
+      '${JSON.stringify(signatures)}',
       unixepoch()
     );
 
@@ -289,6 +343,7 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
       pair,
       hour_ts,
       report_hash,
+      reporter_set_id,
       block_height,
       block_hash,
       confirmed,
@@ -300,7 +355,8 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
       'txid-123',
       'FLUXUSD',
       1707346800,
-      '${'a'.repeat(64)}',
+      '${reportHash}',
+      '${reporterSetId}',
       123456,
       'block-hash-1',
       1,
@@ -322,6 +378,29 @@ async function createTestApp(): Promise<{ app: ReturnType<typeof createApiServer
   await seededApp.ready();
 
   return {
-    app: seededApp
+    app: seededApp,
+    reportHash,
+    reporterSetId
+  };
+}
+
+async function buildRegistry(): Promise<ReporterRegistry> {
+  return {
+    version: 'v1',
+    threshold: 2,
+    reporters: [
+      {
+        id: 'reporter-1',
+        publicKey: await derivePublicKey(privateKeys['reporter-1'])
+      },
+      {
+        id: 'reporter-2',
+        publicKey: await derivePublicKey(privateKeys['reporter-2'])
+      },
+      {
+        id: 'reporter-3',
+        publicKey: await derivePublicKey(privateKeys['reporter-3'])
+      }
+    ]
   };
 }

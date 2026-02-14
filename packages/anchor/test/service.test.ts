@@ -7,8 +7,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { decodeOpReturnPayload } from '@fpho/core';
 import { runMigrations } from '@fpho/api';
+import { buildSignatureBitmap, computeReporterSetId, type ReporterRegistry } from '@fpho/p2p';
 
-import { anchorHourReport, buildSignatureBitmap } from '../src/index.js';
+import { anchorHourReport } from '../src/index.js';
 import type { FluxRpcTransport } from '../src/index.js';
 
 const migrationDir = fileURLToPath(new URL('../../../db/migrations', import.meta.url));
@@ -129,22 +130,54 @@ describe('anchor service', () => {
   });
 
   it('builds deterministic signature bitmaps from signature sets', () => {
-    const bitmap = buildSignatureBitmap(
-      JSON.stringify({
-        'reporter-c': 'sig-c',
-        'reporter-a': 'sig-a',
-        'reporter-b': 'sig-b'
-      })
-    );
+    const registry: ReporterRegistry = {
+      version: 'v1',
+      threshold: 2,
+      reporters: [
+        { id: 'reporter-b', publicKey: 'key-b' },
+        { id: 'reporter-a', publicKey: 'key-a' },
+        { id: 'reporter-c', publicKey: 'key-c' }
+      ]
+    };
+
+    const bitmap = buildSignatureBitmap(registry, {
+      'reporter-c': 'sig-c',
+      'reporter-a': 'sig-a',
+      'reporter-b': 'sig-b'
+    });
 
     expect(bitmap).toBe(7);
-    expect(buildSignatureBitmap(null)).toBe(0);
+
+    const sparse = buildSignatureBitmap(registry, {
+      'reporter-c': 'sig-c'
+    });
+
+    expect(sparse).toBe(4);
   });
 });
 
 function seedHourReport(dbPath: string): void {
   const db = new Database(dbPath);
   try {
+    const registry: ReporterRegistry = {
+      version: 'v1',
+      threshold: 2,
+      reporters: [
+        { id: 'reporter-a', publicKey: 'key-a' },
+        { id: 'reporter-b', publicKey: 'key-b' },
+        { id: 'reporter-c', publicKey: 'key-c' }
+      ]
+    };
+
+    const reporterSetId = computeReporterSetId(registry);
+
+    db.prepare(
+      `
+        INSERT INTO reporter_sets(reporter_set_id, reporters_json, threshold, created_at)
+        VALUES (?, ?, ?, unixepoch())
+      `
+    ).run(reporterSetId, JSON.stringify(registry), registry.threshold);
+
     db.prepare(
       `
         INSERT INTO hour_reports(
@@ -157,10 +190,13 @@ function seedHourReport(dbPath: string): void {
           minute_root,
           report_hash,
           ruleset_version,
+          available_minutes,
+          degraded,
+          reporter_set_id,
           signatures_json,
           created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
       `
     ).run(
       'FLUXUSD',
@@ -172,6 +208,9 @@ function seedHourReport(dbPath: string): void {
       'd'.repeat(64),
       'a'.repeat(64),
       'v1',
+      60,
+      0,
+      reporterSetId,
       JSON.stringify({
         'reporter-a': 'sig-a',
         'reporter-b': 'sig-b',

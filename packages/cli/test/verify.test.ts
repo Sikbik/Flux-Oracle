@@ -3,11 +3,18 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMerkleRoot,
   encodeOpReturnPayload,
+  hashHourlyReport,
   hashMinuteRecord,
   minuteRange,
+  type HourlyReport,
   type MinuteRecord
 } from '@fpho/core';
-import { derivePublicKey, signMessage, type ReporterRegistry } from '@fpho/p2p';
+import {
+  buildSignatureBitmap,
+  derivePublicKey,
+  signMessage,
+  type ReporterRegistry
+} from '@fpho/p2p';
 
 import { runVerifyCommand, usageText } from '../src/index.js';
 
@@ -21,23 +28,36 @@ describe('fpho-verify command', () => {
   it('validates anchor/report/signatures and optional minute root', async () => {
     const hourTs = 1707346800;
     const pair = 'FLUXUSD';
-    const reportHash = 'a'.repeat(64);
     const closeFp = '62750000';
 
     const minutes = buildMinuteItems(hourTs, closeFp);
     const minuteRoot = computeMinuteRoot(pair, hourTs, minutes);
+    const report: HourlyReport = {
+      pair,
+      hour_ts: hourTs.toString(),
+      open_fp: closeFp,
+      high_fp: closeFp,
+      low_fp: closeFp,
+      close_fp: closeFp,
+      minute_root: minuteRoot,
+      ruleset_version: 'v1',
+      available_minutes: '60',
+      degraded: false
+    };
+    const reportHash = hashHourlyReport(report);
     const registry = await buildRegistry();
     const signatures = {
       'reporter-1': await signMessage(`fpho:${hourTs}:${reportHash}`, privateKeys['reporter-1']),
       'reporter-2': await signMessage(`fpho:${hourTs}:${reportHash}`, privateKeys['reporter-2'])
     };
+    const sigBitmap = buildSignatureBitmap(registry, signatures);
     const opReturnHex = Buffer.from(
       encodeOpReturnPayload({
         pairId: 1,
         hourTs,
         closeFp,
         reportHash,
-        sigBitmap: 3
+        sigBitmap
       })
     ).toString('hex');
 
@@ -52,12 +72,9 @@ describe('fpho-verify command', () => {
         ]
       },
       reportPayload: {
-        report: {
-          close_fp: closeFp,
-          minute_root: minuteRoot,
-          report_hash: reportHash,
-          signatures
-        }
+        report,
+        report_hash: reportHash,
+        signatures
       },
       minutesPayload: { items: minutes }
     });
@@ -80,6 +97,7 @@ describe('fpho-verify command', () => {
     expect(result.checks).toMatchObject({
       anchor_found: true,
       report_hash_match: true,
+      report_hash_valid: true,
       op_return_match: true,
       quorum_valid: true,
       minute_root_match: true
@@ -89,11 +107,23 @@ describe('fpho-verify command', () => {
   it('fails verification when quorum signatures are insufficient', async () => {
     const hourTs = 1707346800;
     const pair = 'FLUXUSD';
-    const reportHash = 'b'.repeat(64);
     const closeFp = '62750000';
 
     const minutes = buildMinuteItems(hourTs, closeFp);
     const minuteRoot = computeMinuteRoot(pair, hourTs, minutes);
+    const report: HourlyReport = {
+      pair,
+      hour_ts: hourTs.toString(),
+      open_fp: closeFp,
+      high_fp: closeFp,
+      low_fp: closeFp,
+      close_fp: closeFp,
+      minute_root: minuteRoot,
+      ruleset_version: 'v1',
+      available_minutes: '60',
+      degraded: false
+    };
+    const reportHash = hashHourlyReport(report);
     const registry = await buildRegistry();
     const signatures = {
       'reporter-1': await signMessage(`fpho:${hourTs}:${reportHash}`, privateKeys['reporter-1']),
@@ -105,7 +135,7 @@ describe('fpho-verify command', () => {
         hourTs,
         closeFp,
         reportHash,
-        sigBitmap: 3
+        sigBitmap: buildSignatureBitmap(registry, signatures)
       })
     ).toString('hex');
 
@@ -120,12 +150,9 @@ describe('fpho-verify command', () => {
         ]
       },
       reportPayload: {
-        report: {
-          close_fp: closeFp,
-          minute_root: minuteRoot,
-          report_hash: reportHash,
-          signatures
-        }
+        report,
+        report_hash: reportHash,
+        signatures
       },
       minutesPayload: { items: minutes }
     });

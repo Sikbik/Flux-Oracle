@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 
 import { encodeOpReturnPayload, type OpReturnPayload } from '@fpho/core';
+import { buildSignatureBitmap, type ReporterRegistry } from '@fpho/p2p';
 
 import { buildIpfsMirrorUrl, type IpfsPublisher } from './ipfs.js';
 import { broadcastOpReturnHex, type FluxRpcTransport } from './rpc.js';
@@ -41,6 +42,9 @@ interface HourReportRow {
   minute_root: string;
   report_hash: string;
   ruleset_version: string;
+  available_minutes: number;
+  degraded: number;
+  reporter_set_id: string | null;
   signatures_json: string | null;
 }
 
@@ -57,8 +61,14 @@ export async function anchorHourReport(
       throw new Error(`hour report ${options.pair}:${options.hourTs} has no close_fp`);
     }
 
+    if (!report.reporter_set_id) {
+      throw new Error(`hour report ${options.pair}:${options.hourTs} is missing reporter_set_id`);
+    }
+
     const pairId = resolvePairId(options.pair, options.pairIdMap ?? DEFAULT_PAIR_ID_MAP);
-    const sigBitmap = buildSignatureBitmap(report.signatures_json);
+    const registry = loadReporterRegistry(db, report.reporter_set_id);
+    const signatures = parseSignatures(report.signatures_json);
+    const sigBitmap = buildSignatureBitmap(registry, signatures);
     const opReturnPayload = buildAnchorPayload({
       pairId,
       hourTs: options.hourTs,
@@ -86,17 +96,19 @@ export async function anchorHourReport(
           pair,
           hour_ts,
           report_hash,
+          reporter_set_id,
           ipfs_cid,
           ipfs_mirror_url,
           op_return_hex,
           confirmed,
           created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, unixepoch())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, unixepoch())
         ON CONFLICT(pair, hour_ts)
         DO UPDATE SET
           txid = excluded.txid,
           report_hash = excluded.report_hash,
+          reporter_set_id = excluded.reporter_set_id,
           ipfs_cid = excluded.ipfs_cid,
           ipfs_mirror_url = excluded.ipfs_mirror_url,
           op_return_hex = excluded.op_return_hex,
@@ -108,6 +120,7 @@ export async function anchorHourReport(
       options.pair,
       options.hourTs,
       report.report_hash,
+      report.reporter_set_id,
       ipfsCid,
       ipfsMirrorUrl,
       opReturnHex
@@ -141,29 +154,6 @@ export function buildAnchorPayload(input: {
   };
 }
 
-export function buildSignatureBitmap(signaturesJson: string | null): number {
-  if (!signaturesJson) {
-    return 0;
-  }
-
-  const parsed = JSON.parse(signaturesJson) as unknown;
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('signatures_json must be an object');
-  }
-
-  const signerIds = Object.keys(parsed).sort((left, right) => left.localeCompare(right));
-  if (signerIds.length > 32) {
-    throw new Error('signature bitmap supports at most 32 signers');
-  }
-
-  let bitmap = 0;
-  for (const [index] of signerIds.entries()) {
-    bitmap = (bitmap | (1 << index)) >>> 0;
-  }
-
-  return bitmap;
-}
-
 function loadHourReport(db: Database.Database, pair: string, hourTs: number): HourReportRow {
   const report = db
     .prepare(
@@ -178,6 +168,9 @@ function loadHourReport(db: Database.Database, pair: string, hourTs: number): Ho
           minute_root,
           report_hash,
           ruleset_version,
+          available_minutes,
+          degraded,
+          reporter_set_id,
           signatures_json
         FROM hour_reports
         WHERE pair = ?
@@ -215,6 +208,9 @@ function toIpfsDocument(report: HourReportRow): Record<string, unknown> {
     minute_root: report.minute_root,
     report_hash: report.report_hash,
     ruleset_version: report.ruleset_version,
+    available_minutes: report.available_minutes.toString(),
+    degraded: report.degraded !== 0,
+    reporter_set_id: report.reporter_set_id,
     signatures: parseSignatures(report.signatures_json)
   };
 }
@@ -240,4 +236,31 @@ function parseSignatures(signaturesJson: string | null): Record<string, string> 
   }
 
   return normalized;
+}
+
+function loadReporterRegistry(
+  db: Database.Database,
+  reporterSetId: string
+): ReporterRegistry {
+  const row = db
+    .prepare(
+      `
+        SELECT reporters_json
+        FROM reporter_sets
+        WHERE reporter_set_id = ?
+        LIMIT 1
+      `
+    )
+    .get(reporterSetId) as { reporters_json: string } | undefined;
+
+  if (!row) {
+    throw new Error(`reporter set not found for ${reporterSetId}`);
+  }
+
+  const parsed = JSON.parse(row.reporters_json) as unknown;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('reporter_sets.reporters_json must be an object');
+  }
+
+  return parsed as ReporterRegistry;
 }

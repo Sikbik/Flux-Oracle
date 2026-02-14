@@ -3,11 +3,13 @@ import { readFile } from 'node:fs/promises';
 import {
   buildMerkleRoot,
   decodeOpReturnPayload,
+  hashHourlyReport,
   hashMinuteRecord,
   minuteRange,
+  type HourlyReport,
   type MinuteRecord
 } from '@fpho/core';
-import { hasQuorum, verifySignature, type ReporterRegistry } from '@fpho/p2p';
+import { buildSignatureBitmap, hasQuorum, verifySignature, type ReporterRegistry } from '@fpho/p2p';
 
 export interface VerifyCommandInput {
   baseUrl: string;
@@ -21,6 +23,7 @@ export interface VerifyChecks {
   anchor_found: boolean;
   report_found: boolean;
   report_hash_match: boolean;
+  report_hash_valid: boolean;
   op_return_match: boolean;
   quorum_valid: boolean;
   minute_root_match: boolean;
@@ -46,11 +49,20 @@ interface AnchorItem {
 
 interface ReportPayload {
   report: {
+    pair: string;
+    hour_ts: string;
+    open_fp: string | null;
+    high_fp: string | null;
+    low_fp: string | null;
     close_fp: string | null;
     minute_root: string;
-    report_hash: string;
-    signatures: Record<string, string>;
+    ruleset_version: string;
+    available_minutes: string;
+    degraded: boolean;
   };
+  report_hash: string;
+  signatures: Record<string, string>;
+  reporter_set_id?: string | null;
 }
 
 interface MinutesPayload {
@@ -75,6 +87,7 @@ export async function runVerifyCommand(
       anchor_found: false,
       report_found: false,
       report_hash_match: false,
+      report_hash_valid: false,
       op_return_match: false,
       quorum_valid: false,
       minute_root_match: false
@@ -87,18 +100,24 @@ export async function runVerifyCommand(
   );
 
   const report = reportPayload.report;
-  const reportHashMatch = anchor.report_hash === report.report_hash;
+  const computedReportHash = hashHourlyReport(report as HourlyReport);
+  const reportHashMatch = anchor.report_hash === reportPayload.report_hash;
+  const reportHashValid = computedReportHash === reportPayload.report_hash;
+  const expectedPairId = pairToId(input.pair);
+  const expectedSigBitmap = buildSignatureBitmap(input.registry, reportPayload.signatures);
   const opReturnMatch = verifyOpReturn(
     anchor.op_return_hex,
-    report.report_hash,
+    reportPayload.report_hash,
     input.hourTs,
-    report.close_fp
+    report.close_fp,
+    expectedPairId,
+    expectedSigBitmap
   );
   const validSigners = await verifyQuorumSignatures(
     input.registry,
     input.hourTs,
-    report.report_hash,
-    report.signatures
+    reportPayload.report_hash,
+    reportPayload.signatures
   );
   const quorumValid = hasQuorum(
     input.registry,
@@ -120,6 +139,7 @@ export async function runVerifyCommand(
     anchor_found: true,
     report_found: true,
     report_hash_match: reportHashMatch,
+    report_hash_valid: reportHashValid,
     op_return_match: opReturnMatch,
     quorum_valid: quorumValid,
     minute_root_match: minuteRootMatch
@@ -128,7 +148,7 @@ export async function runVerifyCommand(
   return {
     ok: Object.values(checks).every((value) => value),
     checks,
-    reportHash: report.report_hash,
+    reportHash: reportPayload.report_hash,
     anchorTxid: anchor.txid,
     validSigners
   };
@@ -288,7 +308,9 @@ function verifyOpReturn(
   opReturnHex: string | null,
   expectedReportHash: string,
   expectedHourTs: number,
-  expectedCloseFp: string | null
+  expectedCloseFp: string | null,
+  expectedPairId: number | null,
+  expectedSigBitmap: number
 ): boolean {
   if (!opReturnHex || expectedCloseFp === null) {
     return false;
@@ -297,9 +319,11 @@ function verifyOpReturn(
   try {
     const decoded = decodeOpReturnPayload(Buffer.from(opReturnHex, 'hex'));
     return (
+      (expectedPairId === null || decoded.pairId === expectedPairId) &&
       decoded.reportHash === expectedReportHash &&
       decoded.hourTs === expectedHourTs &&
-      decoded.closeFp === expectedCloseFp
+      decoded.closeFp === expectedCloseFp &&
+      decoded.sigBitmap === expectedSigBitmap
     );
   } catch {
     return false;
@@ -365,6 +389,14 @@ function computeMinuteRoot(
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+}
+
+function pairToId(pair: string): number | null {
+  if (pair === 'FLUXUSD') {
+    return 1;
+  }
+
+  return null;
 }
 
 function failedResult(checks: VerifyChecks): VerifyCommandResult {

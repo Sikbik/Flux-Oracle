@@ -181,13 +181,17 @@ export class IngestorService {
     });
 
     await new Promise<void>((resolve, reject) => {
-      this.healthServer?.listen(this.config.healthPort, '127.0.0.1', (error?: Error) => {
-        if (error) {
-          reject(error);
-          return;
+      this.healthServer?.listen(
+        this.config.healthPort,
+        this.config.healthHost,
+        (error?: Error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
         }
-        resolve();
-      });
+      );
     });
   }
 }

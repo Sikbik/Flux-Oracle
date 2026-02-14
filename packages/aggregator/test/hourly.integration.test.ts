@@ -53,7 +53,7 @@ describe('hourly report persistence', () => {
     try {
       const row = verifyDb
         .prepare(
-          'SELECT open_fp, high_fp, low_fp, close_fp, minute_root, report_hash, ruleset_version FROM hour_reports WHERE pair = ? AND hour_ts = ?'
+          'SELECT open_fp, high_fp, low_fp, close_fp, minute_root, report_hash, ruleset_version, available_minutes, degraded, reporter_set_id FROM hour_reports WHERE pair = ? AND hour_ts = ?'
         )
         .get('FLUXUSD', 1707346800) as {
         open_fp: string | null;
@@ -63,6 +63,9 @@ describe('hourly report persistence', () => {
         minute_root: string;
         report_hash: string;
         ruleset_version: string;
+        available_minutes: number;
+        degraded: number;
+        reporter_set_id: string | null;
       };
 
       expect(row).toEqual({
@@ -72,7 +75,10 @@ describe('hourly report persistence', () => {
         close_fp: '62750000',
         minute_root: result.minuteRoot,
         report_hash: result.reportHash,
-        ruleset_version: 'v1'
+        ruleset_version: 'v1',
+        available_minutes: 3,
+        degraded: 1,
+        reporter_set_id: null
       });
     } finally {
       verifyDb.close();

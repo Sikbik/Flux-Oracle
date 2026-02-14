@@ -1,7 +1,6 @@
 export {
   anchorHourReport,
   buildAnchorPayload,
-  buildSignatureBitmap,
   DEFAULT_PAIR_ID_MAP,
   type AnchorHourReportOptions,
   type AnchorHourReportResult,

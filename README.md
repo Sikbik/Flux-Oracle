@@ -82,7 +82,7 @@ curl 'http://localhost:3000/metrics'
 - broadcasting anchor transactions through Flux JSON-RPC
 - persisting anchor metadata in `anchors`
 
-## Verification Quickstart (planned CLI)
+## Verification Quickstart (CLI)
 
 ```bash
 pnpm --filter @fpho/cli build
@@ -95,8 +95,8 @@ Input transactions JSON format:
 
 ```json
 [
-  { "txid": "abc", "timestamp": 1707346812, "direction": "in", "amount": "2.00000000" },
-  { "txid": "def", "timestamp": 1707346899, "direction": "out", "amount": "3.00000000" }
+  { "txid": "abc", "timestamp": 1707346812, "direction": "in", "amount": "2.00000000", "asset": "FLUX" },
+  { "txid": "def", "timestamp": 1707346899, "direction": "out", "amount": "3.00000000", "asset": "FLUX" }
 ]
 ```
 

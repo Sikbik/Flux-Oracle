@@ -13,7 +13,7 @@ import {
 } from '@fpho/p2p';
 import { runMigrations } from '@fpho/api';
 
-import { persistHourSignatures, QuorumCoordinator } from '../src/index.js';
+import { persistHourSignatures, persistReporterSet, QuorumCoordinator } from '../src/index.js';
 
 const migrationDir = fileURLToPath(new URL('../../../db/migrations', import.meta.url));
 
@@ -115,18 +115,40 @@ describe('quorum coordinator', () => {
     `);
     db.close();
 
-    persistHourSignatures(dbPath, 'FLUXUSD', 1707346800, {
-      'reporter-a': 'sig-a',
-      'reporter-b': 'sig-b'
-    });
+    const registry: ReporterRegistry = {
+      version: 'v1',
+      threshold: 2,
+      reporters: [
+        { id: 'reporter-a', publicKey: 'a'.repeat(64) },
+        { id: 'reporter-b', publicKey: 'b'.repeat(64) }
+      ]
+    };
+    const reporterSetId = persistReporterSet(dbPath, registry);
+
+    persistHourSignatures(
+      dbPath,
+      'FLUXUSD',
+      1707346800,
+      {
+        'reporter-a': 'sig-a',
+        'reporter-b': 'sig-b'
+      },
+      reporterSetId
+    );
 
     const verifyDb = new Database(dbPath, { readonly: true });
     try {
       const row = verifyDb
-        .prepare('SELECT signatures_json FROM hour_reports WHERE pair = ? AND hour_ts = ?')
-        .get('FLUXUSD', 1707346800) as { signatures_json: string | null };
+        .prepare(
+          'SELECT signatures_json, reporter_set_id FROM hour_reports WHERE pair = ? AND hour_ts = ?'
+        )
+        .get('FLUXUSD', 1707346800) as {
+        signatures_json: string | null;
+        reporter_set_id: string | null;
+      };
 
       expect(row.signatures_json).toBe('{"reporter-a":"sig-a","reporter-b":"sig-b"}');
+      expect(row.reporter_set_id).toBe(reporterSetId);
     } finally {
       verifyDb.close();
     }

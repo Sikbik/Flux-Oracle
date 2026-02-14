@@ -33,6 +33,7 @@ describe('tax export command', () => {
             timestamp: 1707346812,
             direction: 'in',
             amount: '2.00000000',
+            asset: 'FLUX',
             note: 'mining'
           },
           {
@@ -40,6 +41,7 @@ describe('tax export command', () => {
             timestamp: 1707346899,
             direction: 'out',
             amount: '3.00000000',
+            asset: 'FLUX',
             note: 'payment'
           }
         ],
@@ -83,10 +85,10 @@ describe('tax export command', () => {
 
     const fullLedger = readFileSync(result.fullLedgerPath, 'utf8');
     expect(fullLedger).toContain(
-      'tx-income-1,1707346812,1707346800,in,2.00000000,1.50000000,3.00000000'
+      'tx-income-1,1707346812,1707346800,in,FLUX,2.00000000,1.50000000,3.00000000'
     );
     expect(fullLedger).toContain(
-      'tx-disposal-1,1707346899,1707346860,out,3.00000000,2.00000000,6.00000000'
+      'tx-disposal-1,1707346899,1707346860,out,FLUX,3.00000000,2.00000000,6.00000000'
     );
 
     const incomeCsv = readFileSync(result.incomePath, 'utf8');

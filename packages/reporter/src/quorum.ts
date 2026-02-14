@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 
 import {
+  computeReporterSetId,
   hasQuorum,
   signMessage,
   verifySignature,
@@ -104,7 +105,8 @@ export function persistHourSignatures(
   dbPath: string,
   pair: string,
   hourTs: number,
-  signatures: Record<string, string>
+  signatures: Record<string, string>,
+  reporterSetId: string
 ): void {
   const db = new Database(dbPath);
 
@@ -117,11 +119,52 @@ export function persistHourSignatures(
           AND hour_ts = ?
       `
     ).run(JSON.stringify(signatures), pair, hourTs);
+
+    db.prepare(
+      `
+        UPDATE hour_reports
+        SET reporter_set_id = ?
+        WHERE pair = ?
+          AND hour_ts = ?
+      `
+    ).run(reporterSetId, pair, hourTs);
   } finally {
     db.close();
   }
 }
 
+export function persistReporterSet(dbPath: string, registry: ReporterRegistry): string {
+  const reporterSetId = computeReporterSetId(registry);
+  const db = new Database(dbPath);
+
+  try {
+    const normalized = normalizeRegistry(registry);
+    db.prepare(
+      `
+        INSERT INTO reporter_sets(reporter_set_id, reporters_json, threshold, created_at)
+        VALUES (?, ?, ?, unixepoch())
+        ON CONFLICT(reporter_set_id)
+        DO UPDATE SET
+          reporters_json = excluded.reporters_json,
+          threshold = excluded.threshold,
+          created_at = excluded.created_at
+      `
+    ).run(reporterSetId, JSON.stringify(normalized), normalized.threshold);
+  } finally {
+    db.close();
+  }
+
+  return reporterSetId;
+}
+
 function signaturePayload(hourTs: number, reportHash: string): string {
   return `fpho:${hourTs}:${reportHash}`;
+}
+
+function normalizeRegistry(registry: ReporterRegistry): ReporterRegistry {
+  return {
+    version: registry.version,
+    threshold: registry.threshold,
+    reporters: [...registry.reporters].sort((left, right) => left.id.localeCompare(right.id))
+  };
 }

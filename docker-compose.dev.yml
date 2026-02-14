@@ -1,13 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: fpho
-      POSTGRES_USER: fpho
-      POSTGRES_PASSWORD: fpho
-    ports:
-      - '5432:5432'
-
   api:
     image: node:20
     working_dir: /workspace
@@ -20,8 +11,6 @@ services:
       FPHO_DB_PATH=/workspace/data/fpho.sqlite pnpm --filter @fpho/api start"
     ports:
       - '3000:3000'
-    depends_on:
-      - db
 
   reporter-1:
     image: node:20

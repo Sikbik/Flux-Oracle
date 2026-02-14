@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeReporterSetId, getReporterSetInfo, hasQuorum } from '../src/index.js';
+import {
+  buildSignatureBitmap,
+  computeReporterSetId,
+  getReporterSetInfo,
+  hasQuorum
+} from '../src/index.js';
 
 describe('reporter registry', () => {
   const registry = {
@@ -61,5 +66,14 @@ describe('reporter registry', () => {
         'reporter-a': 'sig-a'
       })
     ).toBe(false);
+  });
+
+  it('builds signature bitmap based on registry ordering', () => {
+    const bitmap = buildSignatureBitmap(registry, {
+      'reporter-b': 'sig-b',
+      'reporter-c': 'sig-c'
+    });
+
+    expect(bitmap).toBe(0b110);
   });
 });

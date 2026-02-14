@@ -16,9 +16,11 @@ export {
 export { createGossipConfig, type GossipConfig } from './network.js';
 
 export {
+  buildSignatureBitmap,
   computeReporterSetId,
   getReporterSetInfo,
   hasQuorum,
+  sortedReporterIds,
   type ReporterDefinition,
   type ReporterRegistry,
   type ReporterSetInfo
