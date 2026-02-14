@@ -21,6 +21,12 @@ export class GateAdapter extends WebSocketVenueAdapter {
         channel: 'spot.trades',
         event: 'subscribe',
         payload: [venueSymbol]
+      },
+      {
+        time: Math.floor(Date.now() / 1000),
+        channel: 'spot.tickers',
+        event: 'subscribe',
+        payload: [venueSymbol]
       }
     ];
   }
@@ -34,7 +40,10 @@ export class GateAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return parseGateTradeMessage(payload);
+    return [
+      ...parseGateTradeMessage(payload),
+      ...parseGateTickerMessage(payload)
+    ];
   }
 }
 
@@ -59,6 +68,45 @@ export function parseGateTradeMessage(payload: unknown): NormalizationInput[] {
       size: String(entry.amount),
       side: String(entry.side)
     }));
+}
+
+export function parseGateTickerMessage(payload: unknown): NormalizationInput[] {
+  if (!isObject(payload) || payload.channel !== 'spot.tickers') {
+    return [];
+  }
+
+  const result = Array.isArray(payload.result)
+    ? payload.result
+    : payload.result
+      ? [payload.result]
+      : [];
+
+  return result
+    .filter((entry) => isObject(entry))
+    .flatMap((entry) => {
+      const price =
+        entry.last ?? entry.last_price ?? entry.close ?? entry.price ?? entry.price_last;
+      if (price === undefined || price === null) {
+        return [];
+      }
+
+      return [
+        {
+          pair: 'FLUXUSD',
+          venue: 'gate',
+          ts:
+            typeof entry.time_ms === 'number' || typeof entry.time_ms === 'string'
+              ? entry.time_ms
+              : typeof entry.time === 'number'
+                ? entry.time * 1000
+                : typeof entry.timestamp === 'number'
+                  ? entry.timestamp * 1000
+                  : Date.now(),
+          price: String(price),
+          side: null
+        }
+      ];
+    });
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

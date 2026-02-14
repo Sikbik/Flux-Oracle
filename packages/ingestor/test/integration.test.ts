@@ -70,6 +70,7 @@ describe('ingestor integration', () => {
 
     adapter.emit('disconnect');
     adapter.emit('reconnect');
+    adapter.emit('error', new Error('boom'));
 
     const db = new Database(dbPath, { readonly: true });
     try {
@@ -110,13 +111,18 @@ describe('ingestor integration', () => {
     const payload = (await response.json()) as {
       ok: boolean;
       stats: {
-        venueStats: Record<string, { disconnectCount: number; reconnectCount: number }>;
+        venueStats: Record<
+          string,
+          { disconnectCount: number; reconnectCount: number; errorCount: number; lastError: string }
+        >;
       };
     };
 
     expect(payload.ok).toBe(true);
     expect(payload.stats.venueStats.mock.disconnectCount).toBe(1);
     expect(payload.stats.venueStats.mock.reconnectCount).toBe(1);
+    expect(payload.stats.venueStats.mock.errorCount).toBe(1);
+    expect(payload.stats.venueStats.mock.lastError).toBe('boom');
 
     await service.stop();
   });

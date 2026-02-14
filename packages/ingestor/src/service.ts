@@ -41,7 +41,9 @@ export class IngestorService {
         lastTickTs: null,
         receivedTicks: 0,
         disconnectCount: 0,
-        reconnectCount: 0
+        reconnectCount: 0,
+        errorCount: 0,
+        lastError: null
       });
     }
   }
@@ -134,6 +136,14 @@ export class IngestorService {
       const stats = this.statsByVenue.get(adapter.venueId);
       if (stats) {
         stats.reconnectCount += 1;
+      }
+    });
+
+    observableAdapter.on('error', (error: Error) => {
+      const stats = this.statsByVenue.get(adapter.venueId);
+      if (stats) {
+        stats.errorCount += 1;
+        stats.lastError = error instanceof Error ? error.message : String(error);
       }
     });
   }

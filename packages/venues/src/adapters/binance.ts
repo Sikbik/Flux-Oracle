@@ -18,7 +18,10 @@ export class BinanceAdapter extends WebSocketVenueAdapter {
     return [
       {
         method: 'SUBSCRIBE',
-        params: [`${venueSymbol.toLowerCase()}@trade`],
+        params: [
+          `${venueSymbol.toLowerCase()}@trade`,
+          `${venueSymbol.toLowerCase()}@miniTicker`
+        ],
         id: Date.now()
       }
     ];
@@ -33,7 +36,10 @@ export class BinanceAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return parseBinanceTradeMessage(payload);
+    return [
+      ...parseBinanceTradeMessage(payload),
+      ...parseBinanceTickerMessage(payload)
+    ];
   }
 }
 
@@ -54,6 +60,43 @@ export function parseBinanceTradeMessage(payload: unknown): NormalizationInput[]
       price: payload.p,
       size: typeof payload.q === 'string' || typeof payload.q === 'number' ? payload.q : undefined,
       side: payload.m ? 'sell' : 'buy'
+    }
+  ];
+}
+
+export function parseBinanceTickerMessage(payload: unknown): NormalizationInput[] {
+  if (!isObject(payload)) {
+    return [];
+  }
+
+  if (
+    payload.e !== '24hrMiniTicker' &&
+    payload.e !== '24hrTicker' &&
+    payload.e !== 'bookTicker'
+  ) {
+    return [];
+  }
+
+  const price =
+    typeof payload.c === 'string' || typeof payload.c === 'number'
+      ? payload.c
+      : typeof payload.a === 'string' || typeof payload.a === 'number'
+        ? payload.a
+        : typeof payload.b === 'string' || typeof payload.b === 'number'
+          ? payload.b
+          : undefined;
+
+  if (price === undefined || price === null) {
+    return [];
+  }
+
+  return [
+    {
+      pair: 'FLUXUSD',
+      venue: 'binance',
+      ts: typeof payload.E === 'number' ? payload.E : Date.now(),
+      price,
+      side: null
     }
   ];
 }

@@ -20,6 +20,11 @@ export class KrakenAdapter extends WebSocketVenueAdapter {
         event: 'subscribe',
         pair: [venueSymbol],
         subscription: { name: 'trade' }
+      },
+      {
+        event: 'subscribe',
+        pair: [venueSymbol],
+        subscription: { name: 'ticker' }
       }
     ];
   }
@@ -33,7 +38,10 @@ export class KrakenAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return parseKrakenTradeMessage(payload);
+    return [
+      ...parseKrakenTradeMessage(payload),
+      ...parseKrakenTickerMessage(payload)
+    ];
   }
 }
 
@@ -61,4 +69,34 @@ export function parseKrakenTradeMessage(payload: unknown): NormalizationInput[] 
       side: firstTrade[3] === 's' ? 'sell' : 'buy'
     }
   ];
+}
+
+export function parseKrakenTickerMessage(payload: unknown): NormalizationInput[] {
+  if (!Array.isArray(payload) || payload.length < 4) {
+    return [];
+  }
+
+  if (payload[2] !== 'ticker' || !isObject(payload[1])) {
+    return [];
+  }
+
+  const data = payload[1] as Record<string, unknown>;
+  const close = Array.isArray(data.c) ? data.c[0] : undefined;
+  if (close === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      pair: 'FLUXUSD',
+      venue: 'kraken',
+      ts: Date.now(),
+      price: String(close),
+      side: null
+    }
+  ];
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

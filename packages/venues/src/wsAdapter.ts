@@ -12,6 +12,8 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
   private socket: WebSocket | undefined;
 
+  private pingTimer: NodeJS.Timeout | undefined;
+
   private intentionallyDisconnected = false;
 
   private readonly subscribedPairs = new Set<string>();
@@ -28,17 +30,30 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
     }
 
     this.intentionallyDisconnected = false;
-    await this.openSocket();
+    try {
+      await this.openSocket();
+    } catch (error) {
+      const resolved = error instanceof Error ? error : new Error(String(error));
+      if (!this.socket) {
+        this.emit('error', resolved);
+      }
+      this.scheduleReconnectIfNeeded();
+    }
   }
 
   async disconnect(): Promise<void> {
     this.intentionallyDisconnected = true;
     this.backoff.reset();
     this.clearReconnectTimer();
+    this.clearPingTimer();
 
     if (this.socket) {
       this.socket.removeAllListeners();
-      this.socket.close();
+      if (this.socket.readyState === WebSocket.CONNECTING) {
+        this.socket.terminate();
+      } else {
+        this.socket.close();
+      }
       this.socket = undefined;
     }
   }
@@ -59,9 +74,22 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
   protected abstract parseMessage(payload: unknown): NormalizationInput[];
 
+  protected getPingIntervalMs(): number | null {
+    return null;
+  }
+
+  protected buildPingMessage(): unknown | null {
+    return null;
+  }
+
+  protected async resolveWsUrl(): Promise<string> {
+    return this.wsUrl;
+  }
+
   private async openSocket(): Promise<void> {
+    const resolvedUrl = await this.resolveWsUrl();
     await new Promise<void>((resolve, reject) => {
-      const socket = new WebSocket(this.wsUrl);
+      const socket = new WebSocket(resolvedUrl);
       this.socket = socket;
 
       socket.once('open', () => {
@@ -70,6 +98,7 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
           this.emit('reconnect');
         }
         this.hasConnectedOnce = true;
+        this.startPingTimer();
         for (const pair of this.subscribedPairs) {
           this.sendSubscriptionsForPair(pair);
         }
@@ -83,6 +112,7 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
       socket.on('close', () => {
         this.socket = undefined;
         this.emit('disconnect');
+        this.clearPingTimer();
         this.scheduleReconnectIfNeeded();
       });
 
@@ -137,5 +167,30 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
 
     clearTimeout(this.reconnectTimer);
     this.reconnectTimer = undefined;
+  }
+
+  private startPingTimer(): void {
+    const interval = this.getPingIntervalMs();
+    const initialMessage = this.buildPingMessage();
+    if (!interval || !initialMessage) {
+      return;
+    }
+
+    this.clearPingTimer();
+    this.pingTimer = setInterval(() => {
+      const message = this.buildPingMessage();
+      if (message) {
+        this.socket?.send(JSON.stringify(message));
+      }
+    }, interval);
+  }
+
+  private clearPingTimer(): void {
+    if (!this.pingTimer) {
+      return;
+    }
+
+    clearInterval(this.pingTimer);
+    this.pingTimer = undefined;
   }
 }

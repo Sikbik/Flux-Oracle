@@ -3,11 +3,16 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  MexcAdapter,
   normalizeRawTick,
+  parseBinanceTickerMessage,
   parseBinanceTradeMessage,
   parseCryptoComTradeMessage,
+  parseGateTickerMessage,
   parseGateTradeMessage,
+  parseKrakenTickerMessage,
   parseKrakenTradeMessage,
+  parseKuCoinTickerMessage,
   parseKuCoinTradeMessage,
   parseMexcTradeMessage
 } from '../src/index.js';
@@ -29,6 +34,21 @@ describe('adapter parsers', () => {
     });
   });
 
+  it('parses binance ticker message', () => {
+    const ticks = parseBinanceTickerMessage({
+      e: '24hrMiniTicker',
+      E: 1707350467000,
+      s: 'FLUXUSDT',
+      c: '0.6289'
+    });
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'binance',
+      pair: 'FLUXUSD',
+      price: '62890000'
+    });
+  });
+
   it('parses kraken trade fixture', () => {
     const ticks = parseKrakenTradeMessage(loadFixture('kraken-trade.json'));
     expect(ticks).toHaveLength(1);
@@ -37,6 +57,16 @@ describe('adapter parsers', () => {
       pair: 'FLUXUSD',
       price: '62890000',
       side: 'buy'
+    });
+  });
+
+  it('parses kraken ticker message', () => {
+    const ticks = parseKrakenTickerMessage([1, { c: ['0.6289', '1.0'] }, 'ticker', 'FLUX/USD']);
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'kraken',
+      pair: 'FLUXUSD',
+      price: '62890000'
     });
   });
 
@@ -51,6 +81,19 @@ describe('adapter parsers', () => {
     });
   });
 
+  it('parses gate ticker message', () => {
+    const ticks = parseGateTickerMessage({
+      channel: 'spot.tickers',
+      result: { last: '0.6289', time_ms: 1707350467000 }
+    });
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'gate',
+      pair: 'FLUXUSD',
+      price: '62890000'
+    });
+  });
+
   it('parses kucoin trade fixture', () => {
     const ticks = parseKuCoinTradeMessage(loadFixture('kucoin-trade.json'));
     expect(ticks).toHaveLength(1);
@@ -59,6 +102,21 @@ describe('adapter parsers', () => {
       pair: 'FLUXUSD',
       price: '62890000',
       side: 'buy'
+    });
+  });
+
+  it('parses kucoin ticker message', () => {
+    const ticks = parseKuCoinTickerMessage({
+      type: 'message',
+      subject: 'trade.ticker',
+      topic: '/market/ticker:FLUX-USDT',
+      data: { price: '0.6289', time: 1707350467000 }
+    });
+    expect(ticks).toHaveLength(1);
+    expect(normalizeRawTick(ticks[0])).toMatchObject({
+      venue: 'kucoin',
+      pair: 'FLUXUSD',
+      price: '62890000'
     });
   });
 
@@ -71,6 +129,28 @@ describe('adapter parsers', () => {
       price: '62890000',
       side: 'sell'
     });
+  });
+
+  it('polls mexc rest ticker', async () => {
+    const fetcher = (async () => ({
+      ok: true,
+      json: async () => ({ price: '0.6289' })
+    })) as typeof fetch;
+
+    const adapter = new MexcAdapter({ fetcher, pollIntervalMs: 60_000 });
+    const tickPromise = new Promise((resolve) => adapter.once('tick', resolve));
+
+    await adapter.connect();
+    await adapter.subscribe('FLUXUSD');
+
+    const tick = (await tickPromise) as { venue: string; pair: string; price: string };
+    expect(tick).toMatchObject({
+      venue: 'mexc',
+      pair: 'FLUXUSD',
+      price: '62890000'
+    });
+
+    await adapter.disconnect();
   });
 
   it('parses crypto.com trade fixture', () => {

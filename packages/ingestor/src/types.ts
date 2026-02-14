@@ -21,6 +21,8 @@ export interface VenueRuntimeStats {
   receivedTicks: number;
   disconnectCount: number;
   reconnectCount: number;
+  errorCount: number;
+  lastError: string | null;
 }
 
 export interface IngestorDependencies {
