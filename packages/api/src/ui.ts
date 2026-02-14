@@ -3,7 +3,7 @@ export const DASHBOARD_HTML = `<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Flux Oracle Terminal</title>
+    <title>Flux Oracle</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -227,7 +227,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         padding: 22px;
         box-shadow: var(--shadow);
         position: relative;
-        overflow: hidden;
+        overflow: visible;
         animation: panelEnter 0.6s ease both;
         animation-delay: var(--delay, 0s);
       }
@@ -438,6 +438,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         --x: 0;
         --y: 0;
         position: absolute;
+        z-index: 4;
         left: 0;
         top: 0;
         transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px))
@@ -858,7 +859,7 @@ export const DASHBOARD_HTML = `<!doctype html>
 
     <header class="terminal-header">
       <div class="brand">
-        <div class="brand-title">Flux Oracle Terminal</div>
+        <div class="brand-title">Flux Oracle</div>
         <div class="brand-sub">
           Minute-grade FMV, stitched from multiple venues and streamed directly from the local API.
         </div>
