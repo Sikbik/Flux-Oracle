@@ -138,3 +138,12 @@ Scaling guidance:
 - Run reporters as quorum nodes only.
 - Keep client traffic on API nodes.
 - Scale API replicas for read load independently of reporter quorum size.
+
+## VPS (systemd)
+
+Systemd unit templates live in `deploy/systemd/`. See `deploy/systemd/README.md` for installation and log commands.
+
+Raw tick retention (SQLite hygiene):
+
+- `FPHO_RAW_TICK_RETENTION_SECONDS` (default `86400`, set `0` to disable pruning)
+- `FPHO_RAW_TICK_PRUNE_INTERVAL_SECONDS` (default `3600`)
