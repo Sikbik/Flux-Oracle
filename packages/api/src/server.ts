@@ -47,6 +47,7 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
       endpoints: [
         'GET /v1/price_at',
         'GET /v1/minutes',
+        'GET /v1/minute/:pair/:minute_ts/venues',
         'GET /v1/anchors',
         'GET /v1/hours',
         'GET /v1/report/:pair/:hour_ts',
@@ -181,6 +182,45 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
         degraded: row.degraded === 1,
         degraded_reason: row.degraded_reason
       }))
+    };
+  });
+
+  app.get('/v1/minute/:pair/:minute_ts/venues', async (request, reply) => {
+    const params = request.params as { pair?: string; minute_ts?: string };
+
+    if (!params.pair || !params.minute_ts || Number.isNaN(Number(params.minute_ts))) {
+      reply.code(400);
+      return { error: 'invalid_minute_key' };
+    }
+
+    const pair = params.pair;
+    const minuteTs = Number(params.minute_ts);
+
+    const rows = db
+      .prepare(
+        `
+          SELECT venue, price_fp, tick_count, source
+          FROM venue_minute_prices
+          WHERE pair = ?
+            AND minute_ts = ?
+          ORDER BY venue ASC
+        `
+      )
+      .all(pair, minuteTs) as Array<{
+      venue: string;
+      price_fp: string | null;
+      tick_count: number;
+      source: string | null;
+    }>;
+
+    const venuesSeen = new Set(rows.map((row) => row.venue));
+    const missing = methodology.venues.filter((venue) => !venuesSeen.has(venue));
+
+    return {
+      pair,
+      minute_ts: minuteTs,
+      venues: rows,
+      missing_venues: missing
     };
   });
 

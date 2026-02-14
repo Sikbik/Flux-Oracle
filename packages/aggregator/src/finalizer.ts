@@ -1,5 +1,7 @@
 import Database from 'better-sqlite3';
 
+import { toMinuteTs } from '@fpho/core';
+
 import { aggregateMinuteReferencePrice } from './median.js';
 import { lastTradeInMinute } from './perVenue.js';
 import type { MinuteFinalizerConfig, RawTickRow, VenueMinutePrice } from './types.js';
@@ -29,12 +31,13 @@ export class MinuteFinalizer {
   }
 
   finalizeMinute(minuteTs: number, nowTs: number): FinalizeMinuteResult {
-    const readyTs = minuteTs + 60 + this.config.graceSeconds;
+    const resolvedMinuteTs = toMinuteTs(minuteTs);
+    const readyTs = resolvedMinuteTs + 60 + this.config.graceSeconds;
     if (nowTs < readyTs) {
       return {
         finalized: false,
         reason: 'grace_window_not_elapsed',
-        minuteTs,
+        minuteTs: resolvedMinuteTs,
         perVenueCount: 0,
         aggregated: {
           referencePriceFp: null,
@@ -48,13 +51,13 @@ export class MinuteFinalizer {
     const perVenueRows: VenueMinutePrice[] = [];
 
     for (const venue of this.config.venues) {
-      const ticks = this.loadTicksForMinute(venue, minuteTs);
+      const ticks = this.loadTicksForMinute(venue, resolvedMinuteTs);
       const minutePrice = lastTradeInMinute(venue, ticks);
       if (!minutePrice) {
         continue;
       }
 
-      this.upsertVenueMinutePrice(minuteTs, minutePrice);
+      this.upsertVenueMinutePrice(resolvedMinuteTs, minutePrice);
       perVenueRows.push(minutePrice);
     }
 
@@ -65,11 +68,11 @@ export class MinuteFinalizer {
       this.config.venueWeights
     );
 
-    this.upsertMinutePrice(minuteTs, aggregated);
+    this.upsertMinutePrice(resolvedMinuteTs, aggregated);
 
     return {
       finalized: true,
-      minuteTs,
+      minuteTs: resolvedMinuteTs,
       perVenueCount: perVenueRows.length,
       aggregated
     };

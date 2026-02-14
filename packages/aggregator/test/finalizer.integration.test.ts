@@ -98,4 +98,50 @@ describe('minute finalizer integration', () => {
       verifyDb.close();
     }
   });
+
+  it('snaps non-aligned minute timestamps to minute boundaries', () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'fpho-agg-'));
+    tempPaths.push(tempDir);
+
+    const dbPath = path.join(tempDir, 'agg.sqlite');
+    runMigrations({ dbPath, migrationsDir: migrationDir });
+
+    const db = new Database(dbPath);
+    db.prepare(
+      `
+        INSERT INTO raw_ticks(pair, venue, ts, price_fp, size_fp, side, source)
+        VALUES
+          ('FLUXUSD', 'binance', 1707350467, '62890000', '10', 'buy', 'ws'),
+          ('FLUXUSD', 'kraken', 1707350469, '62870000', '9', 'sell', 'ws')
+      `
+    ).run();
+    db.close();
+
+    const finalizer = new MinuteFinalizer({
+      dbPath,
+      pair: 'FLUXUSD',
+      venues: ['binance', 'kraken'],
+      graceSeconds: 0,
+      minVenuesPerMinute: 2,
+      outlierClipPct: 10
+    });
+
+    const result = finalizer.finalizeMinute(1707350467, 1707350521);
+    finalizer.close();
+
+    expect(result.minuteTs).toBe(1707350460);
+
+    const verifyDb = new Database(dbPath, { readonly: true });
+    try {
+      const minuteRow = verifyDb
+        .prepare(
+          'SELECT minute_ts FROM minute_prices WHERE pair = ? ORDER BY minute_ts LIMIT 1'
+        )
+        .get('FLUXUSD') as { minute_ts: number };
+
+      expect(minuteRow.minute_ts).toBe(1707350460);
+    } finally {
+      verifyDb.close();
+    }
+  });
 });

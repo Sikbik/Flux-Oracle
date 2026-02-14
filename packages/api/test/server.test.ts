@@ -110,6 +110,28 @@ describe('api endpoints', () => {
     await app.close();
   });
 
+  it('returns per-venue minute price breakdown', async () => {
+    const { app } = await createTestApp();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/minute/FLUXUSD/1707350460/venues'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      pair: 'FLUXUSD',
+      minute_ts: 1707350460,
+      venues: [
+        expect.objectContaining({ venue: 'binance', price_fp: '62900000', tick_count: 4 }),
+        expect.objectContaining({ venue: 'gate', price_fp: '62920000', tick_count: 3 })
+      ],
+      missing_venues: expect.arrayContaining(['kraken'])
+    });
+
+    await app.close();
+  });
+
   it('returns anchored hour summaries in stable order', async () => {
     const { app, reportHash } = await createTestApp();
 
@@ -309,6 +331,11 @@ async function createTestApp(): Promise<{
       ('FLUXUSD', 1707350460, '62900000', 2, 0, NULL),
       ('FLUXUSD', 1707350520, NULL, 1, 1, 'insufficient_venues'),
       ('FLUXUSD', 1707350580, '62880000', 3, 0, NULL);
+
+    INSERT INTO venue_minute_prices(pair, venue, minute_ts, price_fp, tick_count, source, updated_at)
+    VALUES
+      ('FLUXUSD', 'binance', 1707350460, '62900000', 4, 'ws', unixepoch()),
+      ('FLUXUSD', 'gate', 1707350460, '62920000', 3, 'ws', unixepoch());
 
     INSERT INTO reporter_sets(reporter_set_id, reporters_json, threshold, created_at)
     VALUES (
