@@ -148,13 +148,29 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
       return;
     }
 
-    if (this.handleControlMessage(payload)) {
+    try {
+      if (this.handleControlMessage(payload)) {
+        return;
+      }
+    } catch (error) {
+      this.emit('error', asAdapterError(this.venueId, 'control message handler failed', error));
       return;
     }
 
-    const ticks = this.parseMessage(payload);
+    let ticks: NormalizationInput[];
+    try {
+      ticks = this.parseMessage(payload);
+    } catch (error) {
+      this.emit('error', asAdapterError(this.venueId, 'failed to parse message', error));
+      return;
+    }
+
     for (const tick of ticks) {
-      this.emitTick(normalizeRawTick(tick));
+      try {
+        this.emitTick(normalizeRawTick(tick));
+      } catch (error) {
+        this.emit('error', asAdapterError(this.venueId, 'failed to normalize tick', error));
+      }
     }
   }
 
@@ -266,4 +282,9 @@ export abstract class WebSocketVenueAdapter extends BaseVenueAdapter {
     clearInterval(this.pingTimer);
     this.pingTimer = undefined;
   }
+}
+
+function asAdapterError(venueId: string, message: string, error: unknown): Error {
+  const resolved = error instanceof Error ? error : new Error(String(error));
+  return new Error(`[${venueId}] ${message}: ${resolved.message}`);
 }
