@@ -1,8 +1,14 @@
 {
   "method": "state.update",
-  "params": {
-    "market": "FLUXUSDT",
-    "update_time": 1707350467000,
-    "data": [["467728839580596736", "1707350467000", "0.6289", "5.000000", "buy"]]
-  }
+  "data": {
+    "state_list": [
+      {
+        "market": "FLUXUSDT",
+        "last": "0.6289",
+        "open": "0.6200",
+        "close": "0.6289"
+      }
+    ]
+  },
+  "id": null
 }

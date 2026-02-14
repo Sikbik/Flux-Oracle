@@ -20,7 +20,8 @@ export class BinanceAdapter extends WebSocketVenueAdapter {
         method: 'SUBSCRIBE',
         params: [
           `${venueSymbol.toLowerCase()}@trade`,
-          `${venueSymbol.toLowerCase()}@miniTicker`
+          `${venueSymbol.toLowerCase()}@miniTicker`,
+          `${venueSymbol.toLowerCase()}@bookTicker`
         ],
         id: Date.now()
       }

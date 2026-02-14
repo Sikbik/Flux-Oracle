@@ -179,6 +179,7 @@ describe('adapter parsers', () => {
           {
             i: 'FLUX_USDT',
             c: '0.6288',
+            k: '0.6294',
             a: '0.6290',
             b: '0.6285',
             t: 1707350467000
@@ -190,7 +191,7 @@ describe('adapter parsers', () => {
     expect(normalizeRawTick(ticks[0])).toMatchObject({
       venue: 'crypto_com',
       pair: 'FLUXUSD',
-      price: '62880000'
+      price: '62940000'
     });
   });
 
@@ -200,8 +201,7 @@ describe('adapter parsers', () => {
     expect(normalizeRawTick(ticks[0])).toMatchObject({
       venue: 'coinex',
       pair: 'FLUXUSD',
-      price: '62890000',
-      side: 'buy'
+      price: '62890000'
     });
   });
 

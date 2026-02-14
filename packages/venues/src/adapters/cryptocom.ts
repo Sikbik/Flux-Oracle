@@ -93,11 +93,11 @@ export function parseCryptoComTickerMessage(payload: unknown): NormalizationInpu
     .filter((entry) => isObject(entry))
     .flatMap((entry) => {
       const price =
-        entry.c ??
         entry.k ??
         entry.a ??
         entry.b ??
         entry.p ??
+        entry.c ??
         entry.price ??
         entry.last ??
         entry.mark;

@@ -42,31 +42,32 @@ export class CoinExAdapter extends WebSocketVenueAdapter {
 }
 
 export function parseCoinExTradeMessage(payload: unknown): NormalizationInput[] {
-  if (!isObject(payload) || payload.method !== 'state.update' || !isObject(payload.params)) {
+  if (!isObject(payload) || payload.method !== 'state.update' || !isObject(payload.data)) {
     return [];
   }
 
-  const params = payload.params as Record<string, unknown>;
-  if (!Array.isArray(params.data)) {
+  const data = payload.data as Record<string, unknown>;
+  if (!Array.isArray(data.state_list)) {
     return [];
   }
 
-  return params.data
-    .filter((entry) => Array.isArray(entry))
-    .map((entry) => {
-      const ts = entry[1];
-      const price = entry[2];
-      const size = entry[3];
-      const side = entry[4];
+  return data.state_list
+    .filter((entry) => isObject(entry))
+    .flatMap((entry) => {
+      const price = entry.last ?? entry.close ?? entry.open ?? entry.price;
+      if (price === undefined || price === null) {
+        return [];
+      }
 
-      return {
-        pair: 'FLUXUSD',
-        venue: 'coinex',
-        ts: typeof ts === 'string' || typeof ts === 'number' ? ts : 0,
-        price: String(price),
-        size: size === undefined ? undefined : String(size),
-        side: side === undefined ? null : String(side)
-      };
+      return [
+        {
+          pair: 'FLUXUSD',
+          venue: 'coinex',
+          ts: Date.now(),
+          price: String(price),
+          side: null
+        }
+      ];
     });
 }
 
