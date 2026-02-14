@@ -8,7 +8,7 @@ export const DASHBOARD_HTML = `<!doctype html>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Oxanium:wght@500;600;700&display=swap"
     />
     <style>
       :root {
@@ -137,7 +137,7 @@ export const DASHBOARD_HTML = `<!doctype html>
       }
 
       .brand-title {
-        font-family: 'Exo 2', sans-serif;
+        font-family: 'Oxanium', sans-serif;
         font-size: clamp(2rem, 3.2vw, 3.1rem);
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -266,7 +266,7 @@ export const DASHBOARD_HTML = `<!doctype html>
       }
 
       .panel-title {
-        font-family: 'Exo 2', sans-serif;
+        font-family: 'Oxanium', sans-serif;
         text-transform: uppercase;
         letter-spacing: 0.22em;
         font-size: 0.8rem;
@@ -295,31 +295,194 @@ export const DASHBOARD_HTML = `<!doctype html>
         margin-top: 12px;
         padding: 18px;
         border-radius: var(--radius-md);
-        background: linear-gradient(150deg, rgba(6, 12, 18, 0.9), rgba(6, 12, 18, 0.4));
-        border: 1px solid rgba(76, 255, 194, 0.2);
+        background: linear-gradient(160deg, rgba(6, 12, 18, 0.92), rgba(6, 12, 18, 0.38));
+        border: 1px solid rgba(76, 255, 194, 0.22);
+        backdrop-filter: blur(14px);
+      }
+
+      .chart-command {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 4px 2px 14px;
+        flex-wrap: wrap;
+      }
+
+      .range-tabs {
+        display: inline-flex;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 999px;
+        background: rgba(5, 8, 12, 0.72);
+        border: 1px solid rgba(231, 242, 255, 0.08);
+        box-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
+      }
+
+      .range-tab {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(231, 242, 255, 0.74);
+        background: transparent;
+        transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+      }
+
+      .range-tab:hover {
+        transform: translateY(-1px);
+        background: rgba(89, 165, 255, 0.1);
+        color: var(--ink);
+      }
+
+      .range-tab.is-active {
+        background: rgba(40, 240, 165, 0.14);
+        color: var(--accent);
+        box-shadow: inset 0 0 0 1px rgba(40, 240, 165, 0.18),
+          0 0 0 1px rgba(40, 240, 165, 0.08);
+      }
+
+      .range-tab:focus-visible {
+        outline: 2px solid rgba(40, 240, 165, 0.65);
+        outline-offset: 2px;
+      }
+
+      .range-toggle {
+        appearance: none;
+        border: 1px solid rgba(255, 209, 102, 0.28);
+        background: rgba(5, 8, 12, 0.72);
+        color: rgba(255, 209, 102, 0.92);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.74rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+        box-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
+      }
+
+      .range-toggle:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255, 209, 102, 0.45);
+        background: rgba(255, 209, 102, 0.08);
+      }
+
+      .range-toggle[aria-pressed='true'] {
+        border-color: rgba(255, 107, 107, 0.55);
+        color: rgba(255, 107, 107, 0.92);
+        background: rgba(255, 107, 107, 0.12);
+      }
+
+      .chart-stage {
+        position: relative;
+        border-radius: calc(var(--radius-md) - 2px);
+        overflow: hidden;
+        background: radial-gradient(circle at 18% 22%, rgba(89, 165, 255, 0.1), transparent 58%),
+          radial-gradient(circle at 70% 10%, rgba(40, 240, 165, 0.12), transparent 50%),
+          linear-gradient(180deg, rgba(3, 5, 9, 0.9) 0%, rgba(5, 6, 11, 0.5) 100%);
+        border: 1px solid rgba(231, 242, 255, 0.08);
       }
 
       #sparkline {
         width: 100%;
-        height: 190px;
+        height: 260px;
       }
 
       #sparkline-path {
         fill: none;
         stroke: var(--accent-2);
-        stroke-width: 2.6;
+        stroke-width: 2.8;
         stroke-linecap: round;
-        filter: drop-shadow(0 6px 16px rgba(255, 209, 102, 0.4));
+        opacity: 0.92;
+      }
+
+      #sparkline-path-glow {
+        fill: none;
+        stroke: rgba(255, 209, 102, 0.85);
+        stroke-width: 6.2;
+        stroke-linecap: round;
+        opacity: 0.38;
       }
 
       #sparkline-area {
         fill: url(#sparkline-gradient);
-        opacity: 0.8;
+        opacity: 0.9;
       }
 
       #sparkline-dot {
         fill: var(--accent);
         filter: drop-shadow(0 0 12px rgba(40, 240, 165, 0.9));
+      }
+
+      #sparkline-hit {
+        fill: transparent;
+        cursor: crosshair;
+      }
+
+      #sparkline-xhair,
+      #sparkline-yhair {
+        stroke: rgba(231, 242, 255, 0.22);
+        stroke-width: 1;
+        stroke-dasharray: 4 6;
+        pointer-events: none;
+      }
+
+      .chart-tooltip {
+        --x: 0;
+        --y: 0;
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px))
+          translate(-50%, calc(-100% - 14px));
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(76, 255, 194, 0.22);
+        background: rgba(6, 10, 16, 0.72);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 18px 34px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        min-width: 190px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      .tt-kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        font-size: 0.7rem;
+        color: rgba(150, 173, 190, 0.92);
+      }
+
+      .tt-price {
+        font-size: 1.05rem;
+        margin-top: 4px;
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .tt-meta {
+        margin-top: 6px;
+        color: rgba(150, 173, 190, 0.95);
+        font-size: 0.78rem;
+      }
+
+      .chart-axis {
+        margin-top: 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(150, 173, 190, 0.9);
       }
 
       .feed-head {
@@ -425,22 +588,99 @@ export const DASHBOARD_HTML = `<!doctype html>
         gap: 10px;
       }
 
-      .venue-card {
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: rgba(6, 12, 18, 0.7);
-        border: 1px solid rgba(76, 255, 194, 0.2);
+      .venue-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(150, 173, 190, 0.92);
+        font-size: 0.72rem;
       }
 
-      .venue-card strong {
-        display: block;
+      .venue-ref {
+        color: rgba(255, 209, 102, 0.92);
+      }
+
+      .venue-card {
+        position: relative;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: linear-gradient(
+          160deg,
+          rgba(6, 12, 18, 0.92),
+          rgba(6, 12, 18, 0.55)
+        );
+        border: 1px solid rgba(231, 242, 255, 0.1);
+        box-shadow: 0 18px 26px rgba(0, 0, 0, 0.28);
+        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .venue-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(circle at top, rgba(40, 240, 165, 0.14), transparent 55%);
+        opacity: 0.75;
+        pointer-events: none;
+      }
+
+      .venue-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(76, 255, 194, 0.22);
+      }
+
+      .venue-top {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .venue-top strong {
         color: var(--ink);
         font-family: 'JetBrains Mono', monospace;
       }
 
-      .venue-card span {
+      .venue-delta {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        color: rgba(150, 173, 190, 0.85);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .venue-card[data-trend='up'] .venue-delta {
+        color: rgba(40, 240, 165, 0.95);
+      }
+
+      .venue-card[data-trend='down'] .venue-delta {
+        color: rgba(255, 107, 107, 0.95);
+      }
+
+      .venue-price {
+        position: relative;
+        z-index: 1;
+        margin-top: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1rem;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .venue-sub {
+        position: relative;
+        z-index: 1;
+        margin-top: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.74rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(150, 173, 190, 0.9);
       }
 
       .missing-wrap {
@@ -646,7 +886,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         <div class="panel-head">
           <div>
             <div class="panel-title">Minute Runway</div>
-            <div class="panel-sub">Latest 60 minutes (UTC)</div>
+            <div class="panel-sub" id="runway-sub">Latest 60 minutes (UTC)</div>
           </div>
           <div class="panel-meta">
             <span id="sparkline-min">min --</span>
@@ -654,17 +894,65 @@ export const DASHBOARD_HTML = `<!doctype html>
           </div>
         </div>
         <div class="chart-shell">
-          <svg id="sparkline" viewBox="0 0 600 200" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="sparkline-gradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stop-color="#ffd166" stop-opacity="0.5" />
-                <stop offset="100%" stop-color="#05060b" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <path id="sparkline-area" d=""></path>
-            <path id="sparkline-path" d=""></path>
-            <circle id="sparkline-dot" r="5" cx="0" cy="0" opacity="0"></circle>
-          </svg>
+          <div class="chart-command" role="group" aria-label="Runway controls">
+            <div class="range-tabs" role="tablist" aria-label="Runway range">
+              <button class="range-tab is-active" type="button" data-range="1h">1H</button>
+              <button class="range-tab" type="button" data-range="3h">3H</button>
+              <button class="range-tab" type="button" data-range="6h">6H</button>
+              <button class="range-tab" type="button" data-range="12h">12H</button>
+              <button class="range-tab" type="button" data-range="24h">24H</button>
+            </div>
+            <button class="range-toggle" id="toggle-freeze" type="button" aria-pressed="false">
+              Freeze
+            </button>
+          </div>
+          <div class="chart-stage" id="chart-stage">
+            <svg
+              id="sparkline"
+              viewBox="0 0 1000 320"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="Minute reference price runway"
+            >
+              <defs>
+                <linearGradient id="sparkline-gradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#ffd166" stop-opacity="0.45" />
+                  <stop offset="70%" stop-color="#05060b" stop-opacity="0.05" />
+                  <stop offset="100%" stop-color="#05060b" stop-opacity="0" />
+                </linearGradient>
+                <filter id="sparkline-soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feColorMatrix
+                    in="blur"
+                    type="matrix"
+                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -6"
+                    result="glow"
+                  />
+                  <feMerge>
+                    <feMergeNode in="glow" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <path id="sparkline-area" d=""></path>
+              <path id="sparkline-path-glow" d="" filter="url(#sparkline-soft-glow)"></path>
+              <path id="sparkline-path" d=""></path>
+              <line id="sparkline-xhair" x1="0" y1="0" x2="0" y2="320" opacity="0"></line>
+              <line id="sparkline-yhair" x1="0" y1="0" x2="1000" y2="0" opacity="0"></line>
+              <circle id="sparkline-dot" r="6" cx="0" cy="0" opacity="0"></circle>
+              <rect id="sparkline-hit" x="0" y="0" width="1000" height="320"></rect>
+            </svg>
+            <div class="chart-tooltip" id="chart-tooltip" hidden>
+              <div class="tt-kicker" id="tt-kicker">hover</div>
+              <div class="tt-price" id="tt-price">--</div>
+              <div class="tt-meta" id="tt-meta">--</div>
+            </div>
+          </div>
+          <div class="chart-axis">
+            <span id="axis-start">--</span>
+            <span id="axis-mid">--</span>
+            <span id="axis-end">--</span>
+          </div>
         </div>
         <div class="feed-head">
           <span>Time</span>
@@ -748,8 +1036,25 @@ export const DASHBOARD_HTML = `<!doctype html>
         grace: 0,
         latestMinuteTs: null,
         latestBreakdown: null,
-        openMinuteTs: null
+        openMinuteTs: null,
+        rangeKey: '1h',
+        frozen: false,
+        minuteByTs: new Map(),
+        runwaySeries: [],
+        runwayMeta: null,
+        runwayLast: null,
+        breakdownCache: new Map()
       };
+
+      const RANGES = {
+        '1h': { label: '1H', seconds: 60 * 60 },
+        '3h': { label: '3H', seconds: 3 * 60 * 60 },
+        '6h': { label: '6H', seconds: 6 * 60 * 60 },
+        '12h': { label: '12H', seconds: 12 * 60 * 60 },
+        '24h': { label: '24H', seconds: 24 * 60 * 60 }
+      };
+
+      const RUNWAY_VIEW = { width: 1000, height: 320 };
 
       const el = (id) => document.getElementById(id);
 
@@ -761,9 +1066,21 @@ export const DASHBOARD_HTML = `<!doctype html>
         timeZone: 'UTC'
       });
 
+      const minuteFormatter = new Intl.DateTimeFormat(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'UTC'
+      });
+
       const fmtTime = (tsSeconds) => {
         if (!tsSeconds) return '--';
         return timeFormatter.format(new Date(tsSeconds * 1000));
+      };
+
+      const fmtMinute = (tsSeconds) => {
+        if (!tsSeconds) return '--';
+        return minuteFormatter.format(new Date(tsSeconds * 1000));
       };
 
       const updateMinuteParam = (minuteTs) => {
@@ -772,6 +1089,16 @@ export const DASHBOARD_HTML = `<!doctype html>
           url.searchParams.set('minute', String(minuteTs));
         } else {
           url.searchParams.delete('minute');
+        }
+        window.history.replaceState({}, '', url.toString());
+      };
+
+      const updateRangeParam = (rangeKey) => {
+        const url = new URL(window.location.href);
+        if (rangeKey) {
+          url.searchParams.set('range', String(rangeKey));
+        } else {
+          url.searchParams.delete('range');
         }
         window.history.replaceState({}, '', url.toString());
       };
@@ -821,6 +1148,152 @@ export const DASHBOARD_HTML = `<!doctype html>
         line.style.color = warn ? 'var(--danger)' : 'var(--accent)';
       };
 
+      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+      const describeRange = (rangeKey) => {
+        const entry = RANGES[rangeKey] ?? RANGES['1h'];
+        if (!entry) return 'Latest minute runway (UTC)';
+        if (entry.seconds <= 60 * 60) return 'Latest 60 minutes (UTC)';
+        const hours = Math.round(entry.seconds / 3600);
+        return 'Last ' + hours + ' hours (UTC)';
+      };
+
+      const applyRangeUi = () => {
+        const tabs = Array.from(document.querySelectorAll('.range-tab'));
+        tabs.forEach((tab) => {
+          const key = tab.dataset.range;
+          if (!key) return;
+          const active = key === state.rangeKey;
+          tab.classList.toggle('is-active', active);
+        });
+        setText('runway-sub', describeRange(state.rangeKey));
+      };
+
+      const setFrozen = (next) => {
+        state.frozen = !!next;
+        const button = el('toggle-freeze');
+        if (button) {
+          button.setAttribute('aria-pressed', state.frozen ? 'true' : 'false');
+          button.textContent = state.frozen ? 'Frozen' : 'Freeze';
+        }
+        setStatus(state.frozen ? 'status frozen' : 'status live');
+      };
+
+      const setRange = (rangeKey) => {
+        if (!RANGES[rangeKey]) return;
+        state.rangeKey = rangeKey;
+        applyRangeUi();
+        updateRangeParam(rangeKey);
+        void refresh();
+      };
+
+      let runwayHandlersBound = false;
+
+      const restoreRunwayIdle = () => {
+        const tooltip = el('chart-tooltip');
+        const xhair = el('sparkline-xhair');
+        const yhair = el('sparkline-yhair');
+        const dot = el('sparkline-dot');
+        if (tooltip) tooltip.hidden = true;
+        if (xhair) xhair.setAttribute('opacity', '0');
+        if (yhair) yhair.setAttribute('opacity', '0');
+
+        if (!dot) return;
+        if (state.runwayLast) {
+          dot.setAttribute('cx', state.runwayLast.x.toFixed(2));
+          dot.setAttribute('cy', state.runwayLast.y.toFixed(2));
+          dot.setAttribute('opacity', '1');
+        } else {
+          dot.setAttribute('opacity', '0');
+        }
+      };
+
+      const bindRunwayHandlers = () => {
+        if (runwayHandlersBound) return;
+        const svg = el('sparkline');
+        const hit = el('sparkline-hit');
+        if (!svg || !hit) return;
+
+        const onMove = (event) => {
+          if (!state.runwayMeta || !state.runwaySeries || state.runwaySeries.length < 2) {
+            return;
+          }
+
+          const rect = svg.getBoundingClientRect();
+          const relX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+          const idx = Math.round(relX * (state.runwaySeries.length - 1));
+          const entry = state.runwaySeries[idx];
+          if (!entry) return;
+
+          const xSvg = idx * state.runwayMeta.step;
+          const xhair = el('sparkline-xhair');
+          const yhair = el('sparkline-yhair');
+          const dot = el('sparkline-dot');
+
+          if (xhair) {
+            xhair.setAttribute('x1', xSvg.toFixed(2));
+            xhair.setAttribute('x2', xSvg.toFixed(2));
+            xhair.setAttribute('opacity', '1');
+          }
+
+          let yPx = rect.height * 0.18;
+          if (entry.value !== null && entry.value !== undefined) {
+            const ySvg =
+              RUNWAY_VIEW.height -
+              ((entry.value - state.runwayMeta.min) / state.runwayMeta.range) * RUNWAY_VIEW.height;
+
+            if (yhair) {
+              yhair.setAttribute('y1', ySvg.toFixed(2));
+              yhair.setAttribute('y2', ySvg.toFixed(2));
+              yhair.setAttribute('opacity', '1');
+            }
+
+            if (dot) {
+              dot.setAttribute('cx', xSvg.toFixed(2));
+              dot.setAttribute('cy', ySvg.toFixed(2));
+              dot.setAttribute('opacity', '1');
+            }
+
+            yPx = (ySvg / RUNWAY_VIEW.height) * rect.height;
+          } else {
+            if (yhair) yhair.setAttribute('opacity', '0');
+            if (dot) {
+              dot.setAttribute('cx', xSvg.toFixed(2));
+              dot.setAttribute('cy', (RUNWAY_VIEW.height * 0.18).toFixed(2));
+              dot.setAttribute('opacity', '0.2');
+            }
+          }
+
+          const tooltip = el('chart-tooltip');
+          if (tooltip) {
+            const xPx = clamp(relX * rect.width, 98, rect.width - 98);
+            const yPxSafe = clamp(yPx, 54, rect.height - 14);
+            tooltip.style.setProperty('--x', String(xPx));
+            tooltip.style.setProperty('--y', String(yPxSafe));
+            tooltip.hidden = false;
+          }
+
+          setText('tt-kicker', fmtMinute(entry.ts) + ' UTC');
+          setText(
+            'tt-price',
+            entry.value !== null && entry.value !== undefined ? formatUsdNumber(entry.value, 6) : '--'
+          );
+
+          const coverage = entry.venuesUsed ?? '--';
+          const status = entry.degraded ? 'degraded' : 'ok';
+          const reason = entry.degraded && entry.degradedReason ? ' · ' + entry.degradedReason : '';
+          setText('tt-meta', 'venues ' + coverage + ' · ' + status + reason);
+        };
+
+        const onLeave = () => restoreRunwayIdle();
+
+        hit.addEventListener('pointermove', onMove);
+        hit.addEventListener('pointerdown', onMove);
+        hit.addEventListener('pointerleave', onLeave);
+
+        runwayHandlersBound = true;
+      };
+
       const fetchJson = async (path) => {
         const response = await fetch(path);
         if (response.status === 404) {
@@ -830,6 +1303,45 @@ export const DASHBOARD_HTML = `<!doctype html>
           throw new Error('request failed: ' + response.status);
         }
         return response.json();
+      };
+
+      const fetchMinutesForRunway = async (pair, nowTs) => {
+        const range = RANGES[state.rangeKey] ?? RANGES['1h'];
+        const seconds = range ? range.seconds : 60 * 60;
+        const start = Math.floor((nowTs - seconds) / 60) * 60;
+        const end = nowTs;
+        const limit = 1000;
+        const base =
+          '/v1/minutes?pair=' +
+          pair +
+          '&start=' +
+          start +
+          '&end=' +
+          end +
+          '&limit=' +
+          limit +
+          '&offset=';
+
+        if (seconds <= limit * 60) {
+          const page = await fetchJson(base + '0');
+          return page && page.items ? page.items : [];
+        }
+
+        const [pageA, pageB] = await Promise.all([
+          fetchJson(base + '0'),
+          fetchJson(base + String(limit))
+        ]);
+        const itemsA = pageA && pageA.items ? pageA.items : [];
+        const itemsB = pageB && pageB.items ? pageB.items : [];
+
+        const combined = itemsA.concat(itemsB);
+        const seen = new Set();
+        return combined.filter((row) => {
+          const key = String(row.minute_ts);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       };
 
       const selectLiveMinute = (items) => {
@@ -988,22 +1500,56 @@ export const DASHBOARD_HTML = `<!doctype html>
 
           const venues = breakdown.venues || [];
           const missing = breakdown.missing_venues || [];
+          const minuteRow = state.minuteByTs.get(Number(minuteTs));
+          const referenceValue =
+            minuteRow && minuteRow.reference_price_fp
+              ? fixedToNumber(minuteRow.reference_price_fp)
+              : null;
+          const referenceText =
+            minuteRow && minuteRow.reference_price_fp ? formatUsd(minuteRow.reference_price_fp, 6) : '--';
+
           const venueHtml =
             '<div class="venue-grid">' +
             venues
               .map((entry) => {
                 const price = entry.price_fp ? formatUsd(entry.price_fp) : '--';
+                const venueValue = entry.price_fp ? fixedToNumber(entry.price_fp) : null;
+                const deltaPct =
+                  referenceValue !== null && venueValue !== null && referenceValue !== 0
+                    ? ((venueValue - referenceValue) / referenceValue) * 100
+                    : null;
+                const deltaText =
+                  deltaPct !== null
+                    ? (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(2) + '%'
+                    : '';
+                const trend =
+                  deltaPct === null
+                    ? 'flat'
+                    : deltaPct > 0.05
+                      ? 'up'
+                      : deltaPct < -0.05
+                        ? 'down'
+                        : 'flat';
+
                 return (
-                  '<div class="venue-card">' +
+                  '<div class="venue-card" data-trend="' +
+                  trend +
+                  '">' +
+                  '<div class="venue-top">' +
                   '<strong>' +
                   entry.venue +
                   '</strong>' +
-                  '<span>' +
-                  price +
-                  '</span><br />' +
-                  '<span>ticks ' +
-                  entry.tick_count +
+                  '<span class="venue-delta">' +
+                  deltaText +
                   '</span>' +
+                  '</div>' +
+                  '<div class="venue-price">' +
+                  price +
+                  '</div>' +
+                  '<div class="venue-sub">ticks ' +
+                  entry.tick_count +
+                  (entry.source ? ' · ' + entry.source : '') +
+                  '</div>' +
                   '</div>'
                 );
               })
@@ -1017,7 +1563,14 @@ export const DASHBOARD_HTML = `<!doctype html>
                 '</div>'
               : '<div class="coverage-missing">No missing venues</div>';
 
-          panel.innerHTML = '<div>Venue Breakdown</div>' + venueHtml + '<div>' + missingHtml + '</div>';
+          panel.innerHTML =
+            '<div class="venue-head"><span>Venue Breakdown</span><span class="venue-ref">ref ' +
+            referenceText +
+            '</span></div>' +
+            venueHtml +
+            '<div>' +
+            missingHtml +
+            '</div>';
         } catch (error) {
           panel.textContent = 'failed to load venue data — refresh to retry';
           console.error(error);
@@ -1045,54 +1598,120 @@ export const DASHBOARD_HTML = `<!doctype html>
         });
       };
 
-      const renderSparkline = (items) => {
+      const renderRunway = (items) => {
         const pathEl = el('sparkline-path');
+        const glowEl = el('sparkline-path-glow');
         const areaEl = el('sparkline-area');
         const dotEl = el('sparkline-dot');
-        if (!pathEl || !areaEl || !dotEl) return;
-        const points = (items || [])
-          .map((row) => ({
-            ts: row.minute_ts,
-            value: fixedToNumber(row.reference_price_fp)
-          }))
-          .filter((row) => row.value !== null);
+        if (!pathEl || !glowEl || !areaEl || !dotEl) return;
 
-        if (points.length < 2) {
+        const series = (items || []).map((row) => ({
+          ts: row.minute_ts,
+          value: fixedToNumber(row.reference_price_fp),
+          venuesUsed: row.venues_used ?? null,
+          degraded: !!row.degraded,
+          degradedReason: row.degraded_reason ?? null
+        }));
+
+        state.runwaySeries = series;
+
+        const priced = series.filter((row) => row.value !== null).map((row) => row.value);
+
+        if (priced.length < 2 || series.length < 2) {
           pathEl.setAttribute('d', '');
+          glowEl.setAttribute('d', '');
           areaEl.setAttribute('d', '');
           dotEl.setAttribute('opacity', '0');
+          setText('axis-start', '--');
+          setText('axis-mid', '--');
+          setText('axis-end', '--');
+          state.runwayMeta = null;
+          state.runwayLast = null;
+          restoreRunwayIdle();
           return;
         }
 
-        const values = points.map((p) => p.value);
-        const min = Math.min(...values);
-        const max = Math.max(...values);
+        const min = Math.min(...priced);
+        const max = Math.max(...priced);
         const range = max - min || 1;
-        const width = 600;
-        const height = 200;
-        const step = width / (points.length - 1);
+        const width = RUNWAY_VIEW.width;
+        const height = RUNWAY_VIEW.height;
+        const step = width / (series.length - 1);
 
-        const path = points
-          .map((point, index) => {
-            const x = index * step;
-            const y = height - ((point.value - min) / range) * height;
-            return (index === 0 ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2);
-          })
-          .join(' ');
+        const lineParts = [];
+        const areaParts = [];
+        let segment = [];
 
-        const area = path + ' L ' + width + ' ' + height + ' L 0 ' + height + ' Z';
-        pathEl.setAttribute('d', path);
-        areaEl.setAttribute('d', area);
+        const flushSegment = () => {
+          if (segment.length === 0) return;
+          const line = segment
+            .map((point, index) => {
+              return (index === 0 ? 'M' : 'L') + point.x.toFixed(2) + ' ' + point.y.toFixed(2);
+            })
+            .join(' ');
+          lineParts.push(line);
 
-        const last = points[points.length - 1];
-        const lastX = (points.length - 1) * step;
-        const lastY = height - ((last.value - min) / range) * height;
-        dotEl.setAttribute('cx', lastX.toFixed(2));
-        dotEl.setAttribute('cy', lastY.toFixed(2));
-        dotEl.setAttribute('opacity', '1');
+          const first = segment[0];
+          const last = segment[segment.length - 1];
+          areaParts.push(line + ' L ' + last.x.toFixed(2) + ' ' + height + ' L ' + first.x.toFixed(2) + ' ' + height + ' Z');
 
-        setText('sparkline-min', 'min ' + formatUsdNumber(min, 4));
-        setText('sparkline-max', 'max ' + formatUsdNumber(max, 4));
+          segment = [];
+        };
+
+        for (let i = 0; i < series.length; i += 1) {
+          const entry = series[i];
+          if (!entry || entry.value === null) {
+            flushSegment();
+            continue;
+          }
+
+          const x = i * step;
+          const y = height - ((entry.value - min) / range) * height;
+          segment.push({ x, y });
+        }
+        flushSegment();
+
+        const linePath = lineParts.join(' ');
+        const areaPath = areaParts.join(' ');
+
+        pathEl.setAttribute('d', linePath);
+        glowEl.setAttribute('d', linePath);
+        areaEl.setAttribute('d', areaPath);
+
+        let lastIndex = -1;
+        for (let i = series.length - 1; i >= 0; i -= 1) {
+          if (series[i] && series[i].value !== null) {
+            lastIndex = i;
+            break;
+          }
+        }
+
+        if (lastIndex >= 0) {
+          const entry = series[lastIndex];
+          const x = lastIndex * step;
+          const y = height - ((entry.value - min) / range) * height;
+          dotEl.setAttribute('cx', x.toFixed(2));
+          dotEl.setAttribute('cy', y.toFixed(2));
+          dotEl.setAttribute('opacity', '1');
+          state.runwayLast = { x, y, ts: entry.ts, value: entry.value };
+        } else {
+          dotEl.setAttribute('opacity', '0');
+          state.runwayLast = null;
+        }
+
+        const startTs = series[0] ? series[0].ts : null;
+        const midTs = series[Math.floor(series.length / 2)] ? series[Math.floor(series.length / 2)].ts : null;
+        const endTs = series[series.length - 1] ? series[series.length - 1].ts : null;
+        setText('axis-start', startTs ? fmtMinute(startTs) : '--');
+        setText('axis-mid', midTs ? fmtMinute(midTs) : '--');
+        setText('axis-end', endTs ? fmtMinute(endTs) : '--');
+
+        setText('sparkline-min', 'min ' + formatUsdNumber(min, 6));
+        setText('sparkline-max', 'max ' + formatUsdNumber(max, 6));
+
+        state.runwayMeta = { min, max, range, step };
+        restoreRunwayIdle();
+        bindRunwayHandlers();
       };
 
       const renderHour = (hour) => {
@@ -1134,13 +1753,14 @@ export const DASHBOARD_HTML = `<!doctype html>
           const now = Math.floor(Date.now() / 1000);
           const pair = encodeURIComponent(state.pair);
           const [minutes, hours] = await Promise.all([
-            fetchJson('/v1/minutes?pair=' + pair + '&start=' + (now - 3600) + '&end=' + now + '&limit=120'),
+            fetchMinutesForRunway(pair, now),
             fetchJson('/v1/hours?pair=' + pair + '&start=' + (now - 6 * 3600) + '&end=' + now + '&limit=6')
           ]);
 
-          const minuteItems = minutes && minutes.items ? minutes.items : [];
+          const minuteItems = Array.isArray(minutes) ? minutes : minutes && minutes.items ? minutes.items : [];
+          state.minuteByTs = new Map(minuteItems.map((row) => [Number(row.minute_ts), row]));
           renderMinutes(minuteItems);
-          renderSparkline(minuteItems);
+          renderRunway(minuteItems);
 
           const live = selectLiveMinute(minuteItems);
           let breakdown = state.latestBreakdown;
@@ -1158,7 +1778,7 @@ export const DASHBOARD_HTML = `<!doctype html>
           renderHour(hours && hours.items && hours.items.length ? hours.items[hours.items.length - 1] : null);
 
           setText('last-updated', new Date().toISOString().slice(11, 19));
-          setStatus('status live');
+          setStatus(state.frozen ? 'status frozen' : 'status live');
         } catch (error) {
           setStatus('status error', true);
           console.error(error);
@@ -1172,6 +1792,29 @@ export const DASHBOARD_HTML = `<!doctype html>
           state.openMinuteTs = Number(minuteParam);
         }
 
+        const rangeParam = params.get('range');
+        if (rangeParam && RANGES[rangeParam]) {
+          state.rangeKey = rangeParam;
+        }
+
+        applyRangeUi();
+        updateRangeParam(state.rangeKey);
+
+        const freezeButton = el('toggle-freeze');
+        if (freezeButton) {
+          freezeButton.addEventListener('click', () => {
+            setFrozen(!state.frozen);
+          });
+        }
+
+        const rangeTabs = Array.from(document.querySelectorAll('.range-tab'));
+        rangeTabs.forEach((tab) => {
+          tab.addEventListener('click', () => {
+            const key = tab.dataset.range;
+            if (key) setRange(key);
+          });
+        });
+
         try {
           const method = await fetchJson('/v1/methodology');
           renderMethod(method);
@@ -1180,7 +1823,11 @@ export const DASHBOARD_HTML = `<!doctype html>
         }
 
         refresh();
-        setInterval(refresh, 10000);
+        setInterval(() => {
+          if (!state.frozen) {
+            refresh();
+          }
+        }, 10000);
         setInterval(async () => {
           try {
             const method = await fetchJson('/v1/methodology');
