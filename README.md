@@ -50,6 +50,7 @@ pnpm simulate:quorum
 ```bash
 pnpm db:migrate
 pnpm db:reset
+pnpm db:backfill-reporter-set -- --registry ./data/reporter_registry.json
 ```
 
 ## API Quickstart

@@ -5,6 +5,7 @@ export interface MinuteFinalizerConfig {
   graceSeconds: number;
   minVenuesPerMinute: number;
   outlierClipPct?: number;
+  venueWeights?: Record<string, number>;
 }
 
 export interface RawTickRow {

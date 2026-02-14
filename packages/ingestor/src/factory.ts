@@ -5,6 +5,7 @@ import {
   KrakenAdapter,
   KuCoinAdapter,
   MexcAdapter,
+  buildUniswapV3AdapterFromEnv,
   type VenueAdapter
 } from '@fpho/venues';
 
@@ -14,7 +15,8 @@ const ADAPTER_FACTORIES: Record<string, () => VenueAdapter> = {
   gate: () => new GateAdapter(),
   kucoin: () => new KuCoinAdapter(),
   mexc: () => new MexcAdapter(),
-  crypto_com: () => new CryptoComAdapter()
+  crypto_com: () => new CryptoComAdapter(),
+  uniswap_v3_base: () => buildUniswapV3AdapterFromEnv()
 };
 
 export function createVenueAdapters(enabledVenues: string[]): VenueAdapter[] {

@@ -61,7 +61,8 @@ export class MinuteFinalizer {
     const aggregated = aggregateMinuteReferencePrice(
       perVenueRows,
       this.config.minVenuesPerMinute,
-      this.config.outlierClipPct
+      this.config.outlierClipPct,
+      this.config.venueWeights
     );
 
     this.upsertMinutePrice(minuteTs, aggregated);

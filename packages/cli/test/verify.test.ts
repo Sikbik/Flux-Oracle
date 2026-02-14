@@ -11,6 +11,7 @@ import {
 } from '@fpho/core';
 import {
   buildSignatureBitmap,
+  computeReporterSetId,
   derivePublicKey,
   signMessage,
   type ReporterRegistry
@@ -51,6 +52,7 @@ describe('fpho-verify command', () => {
       'reporter-2': await signMessage(`fpho:${hourTs}:${reportHash}`, privateKeys['reporter-2'])
     };
     const sigBitmap = buildSignatureBitmap(registry, signatures);
+    const reporterSetId = computeReporterSetId(registry);
     const opReturnHex = Buffer.from(
       encodeOpReturnPayload({
         pairId: 1,
@@ -74,7 +76,8 @@ describe('fpho-verify command', () => {
       reportPayload: {
         report,
         report_hash: reportHash,
-        signatures
+        signatures,
+        reporter_set_id: reporterSetId
       },
       minutesPayload: { items: minutes }
     });
@@ -98,6 +101,7 @@ describe('fpho-verify command', () => {
       anchor_found: true,
       report_hash_match: true,
       report_hash_valid: true,
+      reporter_set_match: true,
       op_return_match: true,
       quorum_valid: true,
       minute_root_match: true
@@ -152,7 +156,8 @@ describe('fpho-verify command', () => {
       reportPayload: {
         report,
         report_hash: reportHash,
-        signatures
+        signatures,
+        reporter_set_id: computeReporterSetId(registry)
       },
       minutesPayload: { items: minutes }
     });
@@ -172,6 +177,77 @@ describe('fpho-verify command', () => {
 
     expect(result.ok).toBe(false);
     expect(result.checks.quorum_valid).toBe(false);
+  });
+
+  it('fails verification when reporter set id mismatches registry', async () => {
+    const hourTs = 1707346800;
+    const pair = 'FLUXUSD';
+    const closeFp = '62750000';
+
+    const minutes = buildMinuteItems(hourTs, closeFp);
+    const minuteRoot = computeMinuteRoot(pair, hourTs, minutes);
+    const report: HourlyReport = {
+      pair,
+      hour_ts: hourTs.toString(),
+      open_fp: closeFp,
+      high_fp: closeFp,
+      low_fp: closeFp,
+      close_fp: closeFp,
+      minute_root: minuteRoot,
+      ruleset_version: 'v1',
+      available_minutes: '60',
+      degraded: false
+    };
+    const reportHash = hashHourlyReport(report);
+    const registry = await buildRegistry();
+    const signatures = {
+      'reporter-1': await signMessage(`fpho:${hourTs}:${reportHash}`, privateKeys['reporter-1']),
+      'reporter-2': await signMessage(`fpho:${hourTs}:${reportHash}`, privateKeys['reporter-2'])
+    };
+    const opReturnHex = Buffer.from(
+      encodeOpReturnPayload({
+        pairId: 1,
+        hourTs,
+        closeFp,
+        reportHash,
+        sigBitmap: buildSignatureBitmap(registry, signatures)
+      })
+    ).toString('hex');
+
+    const fetchImpl = buildFixtureFetch({
+      anchorsPayload: {
+        items: [
+          {
+            txid: 'txid-3',
+            report_hash: reportHash,
+            op_return_hex: opReturnHex
+          }
+        ]
+      },
+      reportPayload: {
+        report,
+        report_hash: reportHash,
+        signatures,
+        reporter_set_id: 'mismatched-set-id'
+      },
+      minutesPayload: { items: minutes }
+    });
+
+    const result = await runVerifyCommand(
+      {
+        baseUrl: 'http://localhost:3000',
+        pair,
+        hourTs,
+        registry,
+        checkMinuteRoot: true
+      },
+      {
+        fetchImpl
+      }
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.checks.reporter_set_match).toBe(false);
   });
 
   it('exposes CLI help text', () => {

@@ -8,7 +8,11 @@ export {
   type MinutePriceInput
 } from './hourly.js';
 
-export { aggregateMinuteReferencePrice, medianFixedPoint } from './median.js';
+export {
+  aggregateMinuteReferencePrice,
+  medianFixedPoint,
+  weightedMedianFixedPoint
+} from './median.js';
 export { lastTradeInMinute } from './perVenue.js';
 export type {
   MinuteAggregationResult,

@@ -9,7 +9,13 @@ import {
   type HourlyReport,
   type MinuteRecord
 } from '@fpho/core';
-import { buildSignatureBitmap, hasQuorum, verifySignature, type ReporterRegistry } from '@fpho/p2p';
+import {
+  buildSignatureBitmap,
+  computeReporterSetId,
+  hasQuorum,
+  verifySignature,
+  type ReporterRegistry
+} from '@fpho/p2p';
 
 export interface VerifyCommandInput {
   baseUrl: string;
@@ -24,6 +30,7 @@ export interface VerifyChecks {
   report_found: boolean;
   report_hash_match: boolean;
   report_hash_valid: boolean;
+  reporter_set_match: boolean;
   op_return_match: boolean;
   quorum_valid: boolean;
   minute_root_match: boolean;
@@ -88,6 +95,7 @@ export async function runVerifyCommand(
       report_found: false,
       report_hash_match: false,
       report_hash_valid: false,
+      reporter_set_match: false,
       op_return_match: false,
       quorum_valid: false,
       minute_root_match: false
@@ -103,6 +111,10 @@ export async function runVerifyCommand(
   const computedReportHash = hashHourlyReport(report as HourlyReport);
   const reportHashMatch = anchor.report_hash === reportPayload.report_hash;
   const reportHashValid = computedReportHash === reportPayload.report_hash;
+  const expectedReporterSetId = computeReporterSetId(input.registry);
+  const reporterSetMatch =
+    typeof reportPayload.reporter_set_id === 'string' &&
+    reportPayload.reporter_set_id === expectedReporterSetId;
   const expectedPairId = pairToId(input.pair);
   const expectedSigBitmap = buildSignatureBitmap(input.registry, reportPayload.signatures);
   const opReturnMatch = verifyOpReturn(
@@ -140,6 +152,7 @@ export async function runVerifyCommand(
     report_found: true,
     report_hash_match: reportHashMatch,
     report_hash_valid: reportHashValid,
+    reporter_set_match: reporterSetMatch,
     op_return_match: opReturnMatch,
     quorum_valid: quorumValid,
     minute_root_match: minuteRootMatch
