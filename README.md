@@ -74,6 +74,12 @@ curl 'http://localhost:3000/healthz'
 curl 'http://localhost:3000/metrics'
 ```
 
+UI:
+
+```bash
+open http://localhost:3000/
+```
+
 ## Anchoring (Library)
 
 `@fpho/anchor` now supports:

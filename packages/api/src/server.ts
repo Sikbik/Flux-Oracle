@@ -14,6 +14,7 @@ import {
 import { buildSignatureBitmap, hasQuorum, verifySignature, type ReporterRegistry } from '@fpho/p2p';
 
 import { DEFAULT_METHODOLOGY, type MethodologyDefinition } from './methodology.js';
+import { DASHBOARD_HTML } from './ui.js';
 
 export interface ApiServerOptions {
   dbPath: string;
@@ -28,6 +29,16 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
 
   app.addHook('onClose', async () => {
     db.close();
+  });
+
+  app.get('/', async (_request, reply) => {
+    reply.header('content-type', 'text/html; charset=utf-8');
+    return DASHBOARD_HTML;
+  });
+
+  app.get('/ui', async (_request, reply) => {
+    reply.header('content-type', 'text/html; charset=utf-8');
+    return DASHBOARD_HTML;
   });
 
   app.get('/docs', async () => {
