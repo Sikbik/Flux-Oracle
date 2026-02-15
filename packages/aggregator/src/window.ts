@@ -203,9 +203,18 @@ export class WindowReportFinalizer {
             ruleset_version = excluded.ruleset_version,
             available_minutes = excluded.available_minutes,
             degraded = excluded.degraded,
-            signatures_json = excluded.signatures_json,
-            reporter_set_id = excluded.reporter_set_id,
-            created_at = excluded.created_at
+            signatures_json = CASE
+              WHEN window_reports.report_hash = excluded.report_hash THEN window_reports.signatures_json
+              ELSE NULL
+            END,
+            reporter_set_id = CASE
+              WHEN window_reports.report_hash = excluded.report_hash THEN window_reports.reporter_set_id
+              ELSE NULL
+            END,
+            created_at = CASE
+              WHEN window_reports.report_hash = excluded.report_hash THEN window_reports.created_at
+              ELSE excluded.created_at
+            END
         `
       )
       .run(

@@ -134,6 +134,42 @@ export function persistHourSignatures(
   }
 }
 
+export function persistWindowSignatures(
+  dbPath: string,
+  pair: string,
+  windowSeconds: number,
+  windowTs: number,
+  signatures: Record<string, string>,
+  reporterSetId: string
+): void {
+  const db = new Database(dbPath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
+
+  try {
+    db.prepare(
+      `
+        UPDATE window_reports
+        SET signatures_json = ?
+        WHERE pair = ?
+          AND window_seconds = ?
+          AND window_ts = ?
+      `
+    ).run(JSON.stringify(signatures), pair, windowSeconds, windowTs);
+
+    db.prepare(
+      `
+        UPDATE window_reports
+        SET reporter_set_id = ?
+        WHERE pair = ?
+          AND window_seconds = ?
+          AND window_ts = ?
+      `
+    ).run(reporterSetId, pair, windowSeconds, windowTs);
+  } finally {
+    db.close();
+  }
+}
+
 export function persistReporterSet(dbPath: string, registry: ReporterRegistry): string {
   const reporterSetId = computeReporterSetId(registry);
   const db = new Database(dbPath, { timeout: 5000 });

@@ -1,5 +1,6 @@
 export {
   persistHourSignatures,
+  persistWindowSignatures,
   persistReporterSet,
   QuorumCoordinator,
   type QuorumCoordinatorConfig
