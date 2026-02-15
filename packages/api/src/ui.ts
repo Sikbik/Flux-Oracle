@@ -227,7 +227,8 @@ export const DASHBOARD_HTML = `<!doctype html>
         padding: 22px;
         box-shadow: var(--shadow);
         position: relative;
-        overflow: visible;
+        overflow: hidden;
+        min-width: 0;
         animation: panelEnter 0.6s ease both;
         animation-delay: var(--delay, 0s);
       }
@@ -264,6 +265,11 @@ export const DASHBOARD_HTML = `<!doctype html>
         align-items: flex-start;
         gap: 16px;
         margin-bottom: 12px;
+        min-width: 0;
+      }
+
+      .panel-head > div {
+        min-width: 0;
       }
 
       .panel-title {
@@ -277,6 +283,7 @@ export const DASHBOARD_HTML = `<!doctype html>
       .panel-sub {
         color: var(--muted);
         font-size: 0.9rem;
+        overflow-wrap: anywhere;
       }
 
       .panel-meta {
@@ -285,11 +292,23 @@ export const DASHBOARD_HTML = `<!doctype html>
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.8rem;
         color: var(--muted);
+        min-width: 0;
       }
 
       .panel-chart {
         grid-row: 1 / span 4;
         min-height: 540px;
+      }
+
+      .panel-decoder {
+        border-color: rgba(255, 209, 102, 0.22);
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 209, 102, 0.06),
+          0 0 52px rgba(255, 209, 102, 0.05);
+      }
+
+      .panel-decoder::after {
+        opacity: 0.85;
+        background: radial-gradient(circle at top, rgba(255, 209, 102, 0.14), transparent 60%);
       }
 
       .chart-shell {
@@ -790,8 +809,10 @@ export const DASHBOARD_HTML = `<!doctype html>
       }
 
       .stat {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 14px;
+        align-items: baseline;
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.88rem;
         font-variant-numeric: tabular-nums;
@@ -799,11 +820,15 @@ export const DASHBOARD_HTML = `<!doctype html>
 
       .stat span {
         color: var(--muted);
+        min-width: 0;
       }
 
       .stat strong {
         color: var(--ink);
         font-weight: 600;
+        min-width: 0;
+        text-align: right;
+        overflow-wrap: anywhere;
       }
 
       .decoder-shell {
@@ -815,6 +840,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         backdrop-filter: blur(14px);
         display: grid;
         gap: 12px;
+        min-width: 0;
       }
 
       .decoder-label {
@@ -925,12 +951,14 @@ export const DASHBOARD_HTML = `<!doctype html>
       .decoder-output {
         display: grid;
         gap: 14px;
+        min-width: 0;
       }
 
       .decoder-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+        min-width: 0;
       }
 
       .decoder-kv {
@@ -958,7 +986,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         font-size: 0.86rem;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
-        word-break: break-word;
+        overflow-wrap: anywhere;
       }
 
       .decoder-raw-head {
@@ -985,6 +1013,10 @@ export const DASHBOARD_HTML = `<!doctype html>
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.76rem;
         line-height: 1.55;
+        max-width: 100%;
+        max-height: 260px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
 
       footer {
@@ -1164,65 +1196,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         <div class="feed" id="minute-feed"></div>
       </section>
 
-      <section class="panel panel-live" style="--delay: 0.12s">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">Live Minute</div>
-            <div class="panel-sub">FMV reference</div>
-          </div>
-        </div>
-        <div class="live-price" id="price-value" aria-live="polite">--</div>
-        <div class="live-grid">
-          <div class="live-row"><span>minute</span><span id="price-minute-live">--</span></div>
-          <div class="live-row"><span>venues used</span><span id="price-venues-live">--</span></div>
-          <div class="live-row"><span>degraded</span><span id="price-degraded-live">--</span></div>
-        </div>
-        <div class="coverage">
-          <div class="coverage-label">venue coverage</div>
-          <div class="coverage-bar"><span id="coverage-bar"></span></div>
-          <div class="coverage-meta">
-            <span id="coverage-count">--</span>
-            <span class="coverage-missing" id="coverage-missing"></span>
-          </div>
-        </div>
-        <div id="price-reason" class="reason"></div>
-      </section>
-
-      <section class="panel" style="--delay: 0.2s">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">Last Hour</div>
-            <div class="panel-sub">Aggregated summary</div>
-          </div>
-        </div>
-        <div class="stat-grid">
-          <div class="stat"><span>window</span><strong id="hour-window">--</strong></div>
-          <div class="stat"><span>open</span><strong id="hour-open">--</strong></div>
-          <div class="stat"><span>high</span><strong id="hour-high">--</strong></div>
-          <div class="stat"><span>low</span><strong id="hour-low">--</strong></div>
-          <div class="stat"><span>close</span><strong id="hour-close">--</strong></div>
-          <div class="stat"><span>minutes</span><strong id="hour-minutes">--</strong></div>
-          <div class="stat"><span>anchored</span><strong id="hour-anchored">--</strong></div>
-        </div>
-      </section>
-
-      <section class="panel" style="--delay: 0.28s">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">Methodology</div>
-            <div class="panel-sub">Pricing rules</div>
-          </div>
-        </div>
-        <div class="stat-grid">
-          <div class="stat"><span>per venue</span><strong id="method-per">--</strong></div>
-          <div class="stat"><span>reference</span><strong id="method-ref">--</strong></div>
-          <div class="stat"><span>min venues</span><strong id="method-min">--</strong></div>
-          <div class="stat"><span>outlier clip</span><strong id="method-clip">--</strong></div>
-          <div class="stat"><span>degraded</span><strong id="method-degraded">--</strong></div>
-        </div>
-      </section>
-
-      <section class="panel panel-decoder" style="--delay: 0.36s">
+      <section class="panel panel-decoder" style="--delay: 0.12s">
         <div class="panel-head">
           <div>
             <div class="panel-title">OP_RETURN Decoder</div>
@@ -1260,6 +1234,64 @@ export const DASHBOARD_HTML = `<!doctype html>
               <pre id="opreturn-json"></pre>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="panel panel-live" style="--delay: 0.2s">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Live Minute</div>
+            <div class="panel-sub">FMV reference</div>
+          </div>
+        </div>
+        <div class="live-price" id="price-value" aria-live="polite">--</div>
+        <div class="live-grid">
+          <div class="live-row"><span>minute</span><span id="price-minute-live">--</span></div>
+          <div class="live-row"><span>venues used</span><span id="price-venues-live">--</span></div>
+          <div class="live-row"><span>degraded</span><span id="price-degraded-live">--</span></div>
+        </div>
+        <div class="coverage">
+          <div class="coverage-label">venue coverage</div>
+          <div class="coverage-bar"><span id="coverage-bar"></span></div>
+          <div class="coverage-meta">
+            <span id="coverage-count">--</span>
+            <span class="coverage-missing" id="coverage-missing"></span>
+          </div>
+        </div>
+        <div id="price-reason" class="reason"></div>
+      </section>
+
+      <section class="panel" style="--delay: 0.28s">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Last Hour</div>
+            <div class="panel-sub">Aggregated summary</div>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat"><span>window</span><strong id="hour-window">--</strong></div>
+          <div class="stat"><span>open</span><strong id="hour-open">--</strong></div>
+          <div class="stat"><span>high</span><strong id="hour-high">--</strong></div>
+          <div class="stat"><span>low</span><strong id="hour-low">--</strong></div>
+          <div class="stat"><span>close</span><strong id="hour-close">--</strong></div>
+          <div class="stat"><span>minutes</span><strong id="hour-minutes">--</strong></div>
+          <div class="stat"><span>anchored</span><strong id="hour-anchored">--</strong></div>
+        </div>
+      </section>
+
+      <section class="panel" style="--delay: 0.36s">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Methodology</div>
+            <div class="panel-sub">Pricing rules</div>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat"><span>per venue</span><strong id="method-per">--</strong></div>
+          <div class="stat"><span>reference</span><strong id="method-ref">--</strong></div>
+          <div class="stat"><span>min venues</span><strong id="method-min">--</strong></div>
+          <div class="stat"><span>outlier clip</span><strong id="method-clip">--</strong></div>
+          <div class="stat"><span>degraded</span><strong id="method-degraded">--</strong></div>
         </div>
       </section>
     </main>
