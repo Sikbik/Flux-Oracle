@@ -288,7 +288,7 @@ export const DASHBOARD_HTML = `<!doctype html>
       }
 
       .panel-chart {
-        grid-row: 1 / span 3;
+        grid-row: 1 / span 4;
         min-height: 540px;
       }
 
@@ -806,6 +806,187 @@ export const DASHBOARD_HTML = `<!doctype html>
         font-weight: 600;
       }
 
+      .decoder-shell {
+        margin-top: 12px;
+        padding: 18px;
+        border-radius: var(--radius-md);
+        background: linear-gradient(165deg, rgba(6, 12, 18, 0.92), rgba(6, 12, 18, 0.42));
+        border: 1px solid rgba(76, 255, 194, 0.2);
+        backdrop-filter: blur(14px);
+        display: grid;
+        gap: 12px;
+      }
+
+      .decoder-label {
+        color: rgba(150, 173, 190, 0.92);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .decoder-input {
+        width: 100%;
+        min-height: 118px;
+        resize: vertical;
+        border-radius: var(--radius-md);
+        padding: 12px 12px;
+        border: 1px solid rgba(231, 242, 255, 0.12);
+        background: rgba(5, 8, 12, 0.76);
+        color: var(--ink);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        outline: none;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+      }
+
+      .decoder-input:focus {
+        border-color: rgba(40, 240, 165, 0.55);
+        box-shadow: 0 0 0 2px rgba(40, 240, 165, 0.16);
+      }
+
+      .decoder-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .decoder-btn {
+        appearance: none;
+        border: 1px solid rgba(76, 255, 194, 0.24);
+        background: rgba(40, 240, 165, 0.1);
+        color: rgba(40, 240, 165, 0.92);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.74rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+        box-shadow: 0 16px 28px rgba(0, 0, 0, 0.3);
+      }
+
+      .decoder-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(76, 255, 194, 0.4);
+        background: rgba(40, 240, 165, 0.16);
+      }
+
+      .decoder-btn:focus-visible {
+        outline: 2px solid rgba(40, 240, 165, 0.65);
+        outline-offset: 2px;
+      }
+
+      .decoder-btn-ghost {
+        border-color: rgba(231, 242, 255, 0.12);
+        background: rgba(5, 8, 12, 0.76);
+        color: rgba(231, 242, 255, 0.76);
+      }
+
+      .decoder-btn-ghost:hover {
+        border-color: rgba(231, 242, 255, 0.18);
+        background: rgba(89, 165, 255, 0.08);
+      }
+
+      .decoder-btn-mini {
+        padding: 8px 12px;
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+      }
+
+      .decoder-status {
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(231, 242, 255, 0.1);
+        background: rgba(5, 8, 12, 0.62);
+        color: rgba(150, 173, 190, 0.9);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+
+      .decoder-status[data-state='ok'] {
+        color: rgba(40, 240, 165, 0.92);
+        border-color: rgba(76, 255, 194, 0.22);
+        background: rgba(40, 240, 165, 0.08);
+      }
+
+      .decoder-status[data-state='err'] {
+        color: rgba(255, 107, 107, 0.92);
+        border-color: rgba(255, 107, 107, 0.38);
+        background: rgba(255, 107, 107, 0.08);
+      }
+
+      .decoder-output {
+        display: grid;
+        gap: 14px;
+      }
+
+      .decoder-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .decoder-kv {
+        padding: 12px 12px;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(231, 242, 255, 0.08);
+        background: rgba(3, 5, 9, 0.6);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      }
+
+      .decoder-kv span {
+        display: block;
+        color: rgba(150, 173, 190, 0.88);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .decoder-kv strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--ink);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.86rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        word-break: break-word;
+      }
+
+      .decoder-raw-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 2px 2px 10px;
+        color: rgba(150, 173, 190, 0.92);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .decoder-raw pre {
+        margin: 0;
+        padding: 12px 12px;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(231, 242, 255, 0.08);
+        background: rgba(3, 5, 9, 0.86);
+        overflow: auto;
+        color: rgba(231, 242, 255, 0.84);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.76rem;
+        line-height: 1.55;
+      }
+
       footer {
         position: relative;
         z-index: 1;
@@ -853,6 +1034,14 @@ export const DASHBOARD_HTML = `<!doctype html>
 
         details.minute-row summary .chevron {
           justify-self: end;
+        }
+
+        .decoder-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .decoder-actions {
+          justify-content: flex-start;
         }
 
         footer {
@@ -1032,6 +1221,47 @@ export const DASHBOARD_HTML = `<!doctype html>
           <div class="stat"><span>degraded</span><strong id="method-degraded">--</strong></div>
         </div>
       </section>
+
+      <section class="panel panel-decoder" style="--delay: 0.36s">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">OP_RETURN Decoder</div>
+            <div class="panel-sub">Decode an FPHO payload (hourly or window anchors)</div>
+          </div>
+        </div>
+        <div class="decoder-shell">
+          <label class="decoder-label" for="opreturn-hex">paste op_return hex</label>
+          <textarea
+            id="opreturn-hex"
+            class="decoder-input"
+            spellcheck="false"
+            placeholder="Paste payload hex (4650484f...) or a full OP_RETURN script (6a...)"
+          ></textarea>
+          <div class="decoder-actions">
+            <button class="decoder-btn" id="opreturn-example" type="button">Example</button>
+            <button class="decoder-btn decoder-btn-ghost" id="opreturn-clear" type="button">
+              Clear
+            </button>
+          </div>
+          <div class="decoder-status" id="opreturn-status">awaiting input</div>
+          <div class="decoder-output" id="opreturn-output" hidden>
+            <div class="decoder-grid" id="opreturn-grid"></div>
+            <div class="decoder-raw">
+              <div class="decoder-raw-head">
+                <span>decoded json</span>
+                <button
+                  class="decoder-btn decoder-btn-ghost decoder-btn-mini"
+                  id="opreturn-copy"
+                  type="button"
+                >
+                  Copy
+                </button>
+              </div>
+              <pre id="opreturn-json"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer>
@@ -1151,6 +1381,329 @@ export const DASHBOARD_HTML = `<!doctype html>
           return fixed;
         }
         return formatUsdNumber(value, decimals);
+      };
+
+      const OP_RETURN_EXAMPLE =
+        '4650484f020169913ee40000012c00000000006f7534e09cd9da6273136b6e05c346b700c82ec058e70fa0ffa3e96e4913a481ddd6f600000007';
+
+      const escapeHtml = (value) => {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      };
+
+      const normalizeHexCandidate = (raw) => {
+        if (!raw) return '';
+        let text = String(raw).trim();
+        if (!text) return '';
+
+        const lowered = text.toLowerCase();
+        const idx = lowered.indexOf('op_return');
+        if (idx !== -1) {
+          text = text.slice(idx + 'op_return'.length);
+        }
+
+        text = text.replace(/0x/gi, ' ');
+
+        const match = text.match(/[0-9a-fA-F]{16,}/);
+        if (match && match[0]) {
+          return match[0];
+        }
+
+        return text.replace(/[^0-9a-fA-F]/g, '');
+      };
+
+      const bytesToHex = (bytes) => {
+        return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      };
+
+      const bytesFromHex = (hex) => {
+        const clean = hex.trim().toLowerCase();
+        if (!clean) {
+          throw new Error('empty hex');
+        }
+        if (!/^[0-9a-f]+$/.test(clean)) {
+          throw new Error('hex must be 0-9/a-f');
+        }
+        if (clean.length % 2 !== 0) {
+          throw new Error('hex length must be even');
+        }
+        const out = new Uint8Array(clean.length / 2);
+        for (let i = 0; i < out.length; i += 1) {
+          out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+        }
+        return out;
+      };
+
+      const extractOpReturnPayloadHex = (hexCandidate) => {
+        const clean = hexCandidate.trim().toLowerCase();
+        if (!clean) {
+          throw new Error('empty input');
+        }
+
+        if (!clean.startsWith('6a')) {
+          return { payloadHex: clean, scriptStripped: false };
+        }
+
+        const bytes = bytesFromHex(clean);
+        if (bytes.length < 2) {
+          throw new Error('op_return script too short');
+        }
+        if (bytes[0] !== 0x6a) {
+          throw new Error('script does not start with OP_RETURN');
+        }
+
+        let offset = 1;
+        if (offset >= bytes.length) {
+          throw new Error('op_return missing pushdata');
+        }
+
+        const opcode = bytes[offset];
+        offset += 1;
+
+        let len = 0;
+        if (opcode <= 75) {
+          len = opcode;
+        } else if (opcode === 0x4c) {
+          if (offset + 1 > bytes.length) throw new Error('PUSHDATA1 missing length');
+          len = bytes[offset];
+          offset += 1;
+        } else if (opcode === 0x4d) {
+          if (offset + 2 > bytes.length) throw new Error('PUSHDATA2 missing length');
+          len = bytes[offset] | (bytes[offset + 1] << 8);
+          offset += 2;
+        } else if (opcode === 0x4e) {
+          if (offset + 4 > bytes.length) throw new Error('PUSHDATA4 missing length');
+          len =
+            bytes[offset] |
+            (bytes[offset + 1] << 8) |
+            (bytes[offset + 2] << 16) |
+            (bytes[offset + 3] << 24);
+          offset += 4;
+        } else {
+          throw new Error('unsupported pushdata opcode: 0x' + opcode.toString(16));
+        }
+
+        if (offset + len > bytes.length) {
+          throw new Error('pushdata exceeds script length');
+        }
+
+        const payload = bytes.slice(offset, offset + len);
+        return { payloadHex: bytesToHex(payload), scriptStripped: true };
+      };
+
+      const formatFixed8 = (fixed) => {
+        if (fixed === null || fixed === undefined) return '--';
+        const raw = String(fixed).trim();
+        if (!/^-?\\d+$/.test(raw)) return '--';
+        const negative = raw.startsWith('-');
+        const digits = negative ? raw.slice(1) : raw;
+        const padded = digits.padStart(9, '0');
+        const whole = padded.slice(0, -8) || '0';
+        const frac = padded.slice(-8);
+        return (negative ? '-' : '') + whole + '.' + frac;
+      };
+
+      const decodeFphoPayload = (payloadHex) => {
+        const bytes = bytesFromHex(payloadHex);
+        if (bytes.length < 6) {
+          throw new Error('payload too short');
+        }
+
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        const magic =
+          String.fromCharCode(bytes[0] || 0) +
+          String.fromCharCode(bytes[1] || 0) +
+          String.fromCharCode(bytes[2] || 0) +
+          String.fromCharCode(bytes[3] || 0);
+
+        if (magic !== 'FPHO') {
+          throw new Error('invalid magic: ' + magic);
+        }
+
+        const version = view.getUint8(4);
+
+        if (version === 1) {
+          if (bytes.length !== 54) {
+            throw new Error('invalid v1 payload length: ' + bytes.length);
+          }
+
+          const pairId = view.getUint8(5);
+          const hourTs = view.getUint32(6, false);
+          const closeFp = view.getBigInt64(10, false).toString();
+          const reportHash = bytesToHex(bytes.slice(18, 50));
+          const sigBitmap = view.getUint32(50, false);
+          return { version, pairId, hourTs, closeFp, reportHash, sigBitmap };
+        }
+
+        if (version === 2) {
+          if (bytes.length !== 58) {
+            throw new Error('invalid v2 payload length: ' + bytes.length);
+          }
+
+          const pairId = view.getUint8(5);
+          const hourTs = view.getUint32(6, false);
+          const windowSeconds = view.getUint32(10, false);
+          const closeFp = view.getBigInt64(14, false).toString();
+          const reportHash = bytesToHex(bytes.slice(22, 54));
+          const sigBitmap = view.getUint32(54, false);
+          return { version, pairId, hourTs, windowSeconds, closeFp, reportHash, sigBitmap };
+        }
+
+        throw new Error('unsupported version: ' + version);
+      };
+
+      const initOpReturnDecoder = () => {
+        const input = el('opreturn-hex');
+        const status = el('opreturn-status');
+        const output = el('opreturn-output');
+        const grid = el('opreturn-grid');
+        const json = el('opreturn-json');
+        const clearButton = el('opreturn-clear');
+        const exampleButton = el('opreturn-example');
+        const copyButton = el('opreturn-copy');
+
+        if (!input || !status || !output || !grid || !json) {
+          return;
+        }
+
+        let lastDecodedText = '';
+        let debounceTimer = null;
+
+        const setDecoderStatus = (text, stateLabel) => {
+          status.textContent = text;
+          if (stateLabel) {
+            status.setAttribute('data-state', stateLabel);
+          } else {
+            status.removeAttribute('data-state');
+          }
+        };
+
+        const clearOutput = () => {
+          output.hidden = true;
+          grid.innerHTML = '';
+          json.textContent = '';
+          lastDecodedText = '';
+        };
+
+        const renderDecoded = () => {
+          const candidate = normalizeHexCandidate(input.value);
+          if (!candidate) {
+            clearOutput();
+            setDecoderStatus('awaiting input', '');
+            return;
+          }
+
+          try {
+            const extracted = extractOpReturnPayloadHex(candidate);
+            const decoded = decodeFphoPayload(extracted.payloadHex);
+
+            const pairName = decoded.pairId === 1 ? 'FLUXUSD' : 'unknown';
+            const tsIso = new Date(decoded.hourTs * 1000).toISOString();
+            const tsLabel = String(decoded.hourTs) + ' · ' + tsIso.replace('T', ' ').replace('Z', ' UTC');
+            const close = formatFixed8(decoded.closeFp);
+            const closeLabel = String(decoded.closeFp) + ' · ' + close;
+            const windowSeconds =
+              decoded.windowSeconds === undefined ? '--' : String(decoded.windowSeconds);
+
+            const kvRows = [
+              ['version', String(decoded.version)],
+              ['pair', pairName + ' (id ' + String(decoded.pairId) + ')'],
+              ['window seconds', windowSeconds],
+              ['timestamp', tsLabel],
+              ['close fp', closeLabel],
+              ['report hash', decoded.reportHash],
+              ['sig bitmap', String(decoded.sigBitmap)]
+            ];
+
+            grid.innerHTML = kvRows
+              .map(
+                ([key, value]) =>
+                  '<div class="decoder-kv"><span>' +
+                  escapeHtml(key) +
+                  '</span><strong>' +
+                  escapeHtml(value) +
+                  '</strong></div>'
+              )
+              .join('');
+
+            const jsonPayload = {
+              payload_hex: extracted.payloadHex,
+              script_stripped: extracted.scriptStripped,
+              version: decoded.version,
+              pair_id: decoded.pairId,
+              pair: pairName,
+              window_seconds: decoded.windowSeconds,
+              ts: decoded.hourTs,
+              ts_iso: tsIso,
+              close_fp: decoded.closeFp,
+              close: close,
+              report_hash: decoded.reportHash,
+              sig_bitmap: decoded.sigBitmap
+            };
+
+            lastDecodedText = JSON.stringify(jsonPayload, null, 2);
+            json.textContent = lastDecodedText;
+            output.hidden = false;
+
+            const suffix = extracted.scriptStripped ? ' (script stripped)' : '';
+            setDecoderStatus('decoded fpho v' + decoded.version + suffix, 'ok');
+          } catch (error) {
+            clearOutput();
+            setDecoderStatus(
+              'decode failed: ' + (error instanceof Error ? error.message : String(error)),
+              'err'
+            );
+          }
+        };
+
+        const scheduleDecode = () => {
+          if (debounceTimer) {
+            clearTimeout(debounceTimer);
+          }
+          debounceTimer = setTimeout(() => {
+            debounceTimer = null;
+            renderDecoded();
+          }, 80);
+        };
+
+        input.addEventListener('input', scheduleDecode);
+
+        if (clearButton) {
+          clearButton.addEventListener('click', () => {
+            input.value = '';
+            clearOutput();
+            setDecoderStatus('awaiting input', '');
+          });
+        }
+
+        if (exampleButton) {
+          exampleButton.addEventListener('click', () => {
+            input.value = OP_RETURN_EXAMPLE;
+            renderDecoded();
+          });
+        }
+
+        if (copyButton) {
+          copyButton.addEventListener('click', async () => {
+            if (!lastDecodedText) return;
+            try {
+              await navigator.clipboard.writeText(lastDecodedText);
+              setDecoderStatus('copied decoded json to clipboard', 'ok');
+              setTimeout(() => renderDecoded(), 650);
+            } catch (error) {
+              setDecoderStatus(
+                'copy failed: ' + (error instanceof Error ? error.message : String(error)),
+                'err'
+              );
+            }
+          });
+        }
+
+        renderDecoded();
       };
 
       const setText = (id, value) => {
@@ -1852,6 +2405,8 @@ export const DASHBOARD_HTML = `<!doctype html>
             if (key) setRange(key);
           });
         });
+
+        initOpReturnDecoder();
 
         try {
           const method = await fetchJson('/v1/methodology');
