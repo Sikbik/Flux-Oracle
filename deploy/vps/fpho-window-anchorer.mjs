@@ -36,6 +36,15 @@ const transport = new FluxRpcHttpTransport({
 const db = new Database(dbPath, { timeout: 5000 });
 db.pragma('journal_mode = WAL');
 
+const fundingUtxoState = db.prepare(
+  `
+    SELECT txid, vout, amount, address
+    FROM anchor_utxo_state
+    WHERE id = 1
+    LIMIT 1
+  `
+);
+
 const reportExists = db.prepare(
   `
     SELECT 1
@@ -82,6 +91,26 @@ const findWindowToAnchor = () => {
 };
 
 const runOnce = async () => {
+  // In lite mode we don't have wallet/addr indexing; when we use a rolling seed UTXO we must avoid
+  // building long chains of unconfirmed transactions (many peers won't relay/mine them). So we only
+  // broadcast when the current funding outpoint is confirmed on-chain.
+  if (fundingUtxoTxid && fundingUtxoVoutRaw && fundingUtxoAmount && fundingUtxoAddress) {
+    const state = fundingUtxoState.get() ?? {};
+    const txid = state.txid ?? fundingUtxoTxid;
+    const vout = Number(state.vout ?? fundingUtxoVoutRaw);
+
+    const txout = await transport.call('gettxout', [txid, vout, true]);
+    if (!txout) {
+      console.log('[anchorer] funding utxo missing/spent; waiting', `${txid}:${vout}`);
+      return;
+    }
+
+    if (txout.confirmations === 0) {
+      console.log('[anchorer] funding utxo unconfirmed; waiting', `${txid}:${vout}`);
+      return;
+    }
+  }
+
   const windowTs = findWindowToAnchor();
   if (windowTs === null) {
     console.log('[anchorer] no unanchored windows ready');
