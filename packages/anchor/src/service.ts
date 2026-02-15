@@ -123,6 +123,7 @@ export async function anchorHourReport(
     }
 
     const fundingUtxo = resolveFundingUtxo(db, options.fundingUtxo);
+    const changeAmount = fundingUtxo ? computeChangeAmount(fundingUtxo) : null;
     const broadcast = await broadcastOpReturnHex(
       options.fluxRpc,
       opReturnHex,
@@ -132,17 +133,20 @@ export async function anchorHourReport(
               txid: fundingUtxo.txid,
               vout: fundingUtxo.vout,
               changeAddress: fundingUtxo.address,
-              changeAmount: computeChangeAmount(fundingUtxo)
+              changeAmount: changeAmount ?? '0'
             }
           }
         : {}
     );
 
     if (fundingUtxo) {
+      if (broadcast.changeVout === undefined) {
+        throw new Error('broadcast did not return changeVout');
+      }
       persistFundingUtxo(db, {
         txid: broadcast.txid,
-        vout: 0,
-        amount: computeChangeAmount(fundingUtxo),
+        vout: broadcast.changeVout,
+        amount: changeAmount ?? '0',
         address: fundingUtxo.address
       });
     }
@@ -259,6 +263,7 @@ export async function anchorWindowReport(
     }
 
     const fundingUtxo = resolveFundingUtxo(db, options.fundingUtxo);
+    const changeAmount = fundingUtxo ? computeChangeAmount(fundingUtxo) : null;
     const broadcast = await broadcastOpReturnHex(
       options.fluxRpc,
       opReturnHex,
@@ -268,17 +273,20 @@ export async function anchorWindowReport(
               txid: fundingUtxo.txid,
               vout: fundingUtxo.vout,
               changeAddress: fundingUtxo.address,
-              changeAmount: computeChangeAmount(fundingUtxo)
+              changeAmount: changeAmount ?? '0'
             }
           }
         : {}
     );
 
     if (fundingUtxo) {
+      if (broadcast.changeVout === undefined) {
+        throw new Error('broadcast did not return changeVout');
+      }
       persistFundingUtxo(db, {
         txid: broadcast.txid,
-        vout: 0,
-        amount: computeChangeAmount(fundingUtxo),
+        vout: broadcast.changeVout,
+        amount: changeAmount ?? '0',
         address: fundingUtxo.address
       });
     }

@@ -14,6 +14,7 @@ export interface BroadcastOpReturnResult {
   unsignedHex: string;
   fundedHex: string;
   signedHex: string;
+  changeVout?: number;
 }
 
 export interface BroadcastOpReturnUtxoInput {
@@ -123,12 +124,34 @@ export async function broadcastOpReturnHex(
     throw new Error('signrawtransaction did not return a complete signed tx');
   }
 
+  let changeVout: number | undefined;
+  if (utxo) {
+    const decoded = await transport.call<{
+      vout: Array<{
+        n: number;
+        value: number;
+        scriptPubKey: { addresses?: string[] };
+      }>;
+    }>('decoderawtransaction', [signed.hex]);
+
+    const match = decoded.vout.find((output) =>
+      (output.scriptPubKey.addresses ?? []).includes(utxo.changeAddress)
+    );
+
+    if (!match) {
+      throw new Error(`signed tx missing change output for ${utxo.changeAddress}`);
+    }
+
+    changeVout = match.n;
+  }
+
   const txid = await transport.call<string>('sendrawtransaction', [signed.hex]);
 
   return {
     txid,
     unsignedHex,
     fundedHex,
-    signedHex: signed.hex
+    signedHex: signed.hex,
+    changeVout
   };
 }

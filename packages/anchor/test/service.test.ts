@@ -256,6 +256,14 @@ describe('anchor service', () => {
         if (method === 'signrawtransaction') {
           return { hex: 'signed-tx', complete: true } as unknown;
         }
+        if (method === 'decoderawtransaction') {
+          return {
+            vout: [
+              { n: 0, value: 0, scriptPubKey: { addresses: [] } },
+              { n: 1, value: 0.01, scriptPubKey: { addresses: ['t1-utxo-change-address'] } }
+            ]
+          } as unknown;
+        }
         if (method === 'sendrawtransaction') {
           return 'txid-utxo' as unknown;
         }
@@ -283,6 +291,7 @@ describe('anchor service', () => {
     expect(rpcCalls.map((entry) => entry.method)).toEqual([
       'createrawtransaction',
       'signrawtransaction',
+      'decoderawtransaction',
       'sendrawtransaction'
     ]);
 
@@ -307,7 +316,7 @@ describe('anchor service', () => {
 
       expect(utxoRow).toEqual({
         txid: 'txid-utxo',
-        vout: 0,
+        vout: 1,
         amount: '0.01000000',
         address: changeAddress
       });
