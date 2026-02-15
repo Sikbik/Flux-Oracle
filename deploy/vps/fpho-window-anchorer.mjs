@@ -93,20 +93,18 @@ const findWindowToAnchor = () => {
 const runOnce = async () => {
   // In lite mode we don't have wallet/addr indexing; when we use a rolling seed UTXO we must avoid
   // building long chains of unconfirmed transactions (many peers won't relay/mine them). So we only
-  // broadcast when the current funding outpoint is confirmed on-chain.
+  // broadcast when the current funding tx has left our mempool.
   if (fundingUtxoTxid && fundingUtxoVoutRaw && fundingUtxoAmount && fundingUtxoAddress) {
     const state = fundingUtxoState.get() ?? {};
     const txid = state.txid ?? fundingUtxoTxid;
     const vout = Number(state.vout ?? fundingUtxoVoutRaw);
 
-    const txout = await transport.call('gettxout', [txid, vout, true]);
-    if (!txout) {
-      console.log('[anchorer] funding utxo missing/spent; waiting', `${txid}:${vout}`);
-      return;
-    }
-
-    if (txout.confirmations === 0) {
-      console.log('[anchorer] funding utxo unconfirmed; waiting', `${txid}:${vout}`);
+    // NOTE: fluxd-rust lite mode may not support gettxout/getrawtransaction lookups for confirmed txids
+    // without txindex. `getrawmempool` is enough to prevent unconfirmed chains: if the funding tx is
+    // still in our mempool, we wait; once it leaves (confirmed or dropped), we'll attempt a spend.
+    const mempool = await transport.call('getrawmempool', []);
+    if (Array.isArray(mempool) && mempool.includes(txid)) {
+      console.log('[anchorer] funding tx still in mempool; waiting', `${txid}:${vout}`);
       return;
     }
   }
