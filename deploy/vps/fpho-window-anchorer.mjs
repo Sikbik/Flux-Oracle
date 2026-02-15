@@ -38,6 +38,7 @@ const reportExists = db.prepare(
       AND window_seconds = ?
       AND window_ts = ?
       AND close_fp IS NOT NULL
+      AND reporter_set_id IS NOT NULL
     LIMIT 1
   `
 );
@@ -94,7 +95,9 @@ const runOnce = async () => {
   console.log('[anchorer] anchored', `${windowSeconds}:${windowTs}`, result.txid);
 };
 
-await runOnce();
+await runOnce().catch((error) => {
+  console.error('[anchorer] failed', error instanceof Error ? error.message : String(error));
+});
 const timer = setInterval(() => {
   runOnce().catch((error) => {
     console.error('[anchorer] failed', error instanceof Error ? error.message : String(error));
