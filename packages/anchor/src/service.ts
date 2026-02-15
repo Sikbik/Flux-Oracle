@@ -32,6 +32,25 @@ export interface AnchorHourReportResult {
   ipfsMirrorUrl: string | null;
 }
 
+export interface AnchorWindowReportOptions {
+  dbPath: string;
+  pair: string;
+  windowSeconds: number;
+  windowTs: number;
+  fluxRpc: FluxRpcTransport;
+  ipfsPublisher?: IpfsPublisher;
+  ipfsGatewayBaseUrl?: string;
+  pairIdMap?: PairIdMap;
+}
+
+export interface AnchorWindowReportResult {
+  txid: string;
+  opReturnHex: string;
+  opReturnPayload: OpReturnPayload;
+  ipfsCid: string | null;
+  ipfsMirrorUrl: string | null;
+}
+
 interface HourReportRow {
   pair: string;
   hour_ts: number;
@@ -139,9 +158,125 @@ export async function anchorHourReport(
   }
 }
 
+interface WindowReportRow {
+  pair: string;
+  window_seconds: number;
+  window_ts: number;
+  open_fp: string | null;
+  high_fp: string | null;
+  low_fp: string | null;
+  close_fp: string | null;
+  minute_root: string;
+  report_hash: string;
+  ruleset_version: string;
+  available_minutes: number;
+  degraded: number;
+  reporter_set_id: string | null;
+  signatures_json: string | null;
+}
+
+export async function anchorWindowReport(
+  options: AnchorWindowReportOptions
+): Promise<AnchorWindowReportResult> {
+  const db = new Database(options.dbPath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
+
+  try {
+    const report = loadWindowReport(db, options.pair, options.windowSeconds, options.windowTs);
+    const closeFp = report.close_fp;
+
+    if (closeFp === null) {
+      throw new Error(
+        `window report ${options.pair}:${options.windowSeconds}:${options.windowTs} has no close_fp`
+      );
+    }
+
+    if (!report.reporter_set_id) {
+      throw new Error(
+        `window report ${options.pair}:${options.windowSeconds}:${options.windowTs} is missing reporter_set_id`
+      );
+    }
+
+    const pairId = resolvePairId(options.pair, options.pairIdMap ?? DEFAULT_PAIR_ID_MAP);
+    const registry = loadReporterRegistry(db, report.reporter_set_id);
+    const signatures = parseSignatures(report.signatures_json);
+    const sigBitmap = buildSignatureBitmap(registry, signatures);
+    const opReturnPayload = buildAnchorPayload({
+      pairId,
+      hourTs: options.windowTs,
+      windowSeconds: options.windowSeconds,
+      closeFp,
+      reportHash: report.report_hash,
+      sigBitmap
+    });
+    const opReturnHex = Buffer.from(encodeOpReturnPayload(opReturnPayload)).toString('hex');
+
+    let ipfsCid: string | null = null;
+    let ipfsMirrorUrl: string | null = null;
+
+    if (options.ipfsPublisher) {
+      const publishResult = await options.ipfsPublisher.addJson(toWindowIpfsDocument(report));
+      ipfsCid = publishResult.cid;
+      ipfsMirrorUrl = buildIpfsMirrorUrl(publishResult.cid, options.ipfsGatewayBaseUrl);
+    }
+
+    const broadcast = await broadcastOpReturnHex(options.fluxRpc, opReturnHex);
+
+    db.prepare(
+      `
+        INSERT INTO window_anchors(
+          txid,
+          pair,
+          window_seconds,
+          window_ts,
+          report_hash,
+          reporter_set_id,
+          ipfs_cid,
+          ipfs_mirror_url,
+          op_return_hex,
+          confirmed,
+          created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, unixepoch())
+        ON CONFLICT(pair, window_seconds, window_ts)
+        DO UPDATE SET
+          txid = excluded.txid,
+          report_hash = excluded.report_hash,
+          reporter_set_id = excluded.reporter_set_id,
+          ipfs_cid = excluded.ipfs_cid,
+          ipfs_mirror_url = excluded.ipfs_mirror_url,
+          op_return_hex = excluded.op_return_hex,
+          confirmed = excluded.confirmed,
+          created_at = excluded.created_at
+      `
+    ).run(
+      broadcast.txid,
+      options.pair,
+      options.windowSeconds,
+      options.windowTs,
+      report.report_hash,
+      report.reporter_set_id,
+      ipfsCid,
+      ipfsMirrorUrl,
+      opReturnHex
+    );
+
+    return {
+      txid: broadcast.txid,
+      opReturnHex,
+      opReturnPayload,
+      ipfsCid,
+      ipfsMirrorUrl
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export function buildAnchorPayload(input: {
   pairId: number;
   hourTs: number;
+  windowSeconds?: number;
   closeFp: string;
   reportHash: string;
   sigBitmap: number;
@@ -149,6 +284,7 @@ export function buildAnchorPayload(input: {
   return {
     pairId: input.pairId,
     hourTs: input.hourTs,
+    windowSeconds: input.windowSeconds,
     closeFp: input.closeFp,
     reportHash: input.reportHash,
     sigBitmap: input.sigBitmap
@@ -188,6 +324,46 @@ function loadHourReport(db: Database.Database, pair: string, hourTs: number): Ho
   return report;
 }
 
+function loadWindowReport(
+  db: Database.Database,
+  pair: string,
+  windowSeconds: number,
+  windowTs: number
+): WindowReportRow {
+  const report = db
+    .prepare(
+      `
+        SELECT
+          pair,
+          window_seconds,
+          window_ts,
+          open_fp,
+          high_fp,
+          low_fp,
+          close_fp,
+          minute_root,
+          report_hash,
+          ruleset_version,
+          available_minutes,
+          degraded,
+          reporter_set_id,
+          signatures_json
+        FROM window_reports
+        WHERE pair = ?
+          AND window_seconds = ?
+          AND window_ts = ?
+        LIMIT 1
+      `
+    )
+    .get(pair, windowSeconds, windowTs) as WindowReportRow | undefined;
+
+  if (!report) {
+    throw new Error(`window report not found for ${pair}:${windowSeconds}:${windowTs}`);
+  }
+
+  return report;
+}
+
 function resolvePairId(pair: string, pairIdMap: PairIdMap): number {
   const pairId = pairIdMap[pair];
 
@@ -202,6 +378,25 @@ function toIpfsDocument(report: HourReportRow): Record<string, unknown> {
   return {
     pair: report.pair,
     hour_ts: report.hour_ts.toString(),
+    open_fp: report.open_fp,
+    high_fp: report.high_fp,
+    low_fp: report.low_fp,
+    close_fp: report.close_fp,
+    minute_root: report.minute_root,
+    report_hash: report.report_hash,
+    ruleset_version: report.ruleset_version,
+    available_minutes: report.available_minutes.toString(),
+    degraded: report.degraded !== 0,
+    reporter_set_id: report.reporter_set_id,
+    signatures: parseSignatures(report.signatures_json)
+  };
+}
+
+function toWindowIpfsDocument(report: WindowReportRow): Record<string, unknown> {
+  return {
+    pair: report.pair,
+    window_seconds: report.window_seconds.toString(),
+    window_ts: report.window_ts.toString(),
     open_fp: report.open_fp,
     high_fp: report.high_fp,
     low_fp: report.low_fp,
@@ -239,10 +434,7 @@ function parseSignatures(signaturesJson: string | null): Record<string, string> 
   return normalized;
 }
 
-function loadReporterRegistry(
-  db: Database.Database,
-  reporterSetId: string
-): ReporterRegistry {
+function loadReporterRegistry(db: Database.Database, reporterSetId: string): ReporterRegistry {
   const row = db
     .prepare(
       `

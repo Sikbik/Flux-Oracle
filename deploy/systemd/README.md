@@ -25,4 +25,3 @@ journalctl -u fpho-minute-finalizer -f
 journalctl -u fpho-hour-finalizer -f
 journalctl -u fpho-api -f
 ```
-

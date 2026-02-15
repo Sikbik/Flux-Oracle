@@ -28,10 +28,13 @@ export {
 export {
   canonicalizeHourlyReport,
   canonicalizeMinuteRecord,
+  canonicalizeWindowReport,
   hashHourlyReport,
   hashMinuteRecord,
+  hashWindowReport,
   type HourlyReport,
-  type MinuteRecord
+  type MinuteRecord,
+  type WindowReport
 } from './reportHash.js';
 
-export { minuteRange, toHourTs, toMinuteTs } from './time.js';
+export { minuteRange, minuteRangeWindow, toHourTs, toMinuteTs, toWindowTs } from './time.js';

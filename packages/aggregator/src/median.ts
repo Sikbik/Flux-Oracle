@@ -25,9 +25,7 @@ export function medianFixedPoint(values: readonly string[]): string {
   return ((left + right) / 2n).toString();
 }
 
-export function weightedMedianFixedPoint(
-  values: Array<{ value: string; weight: number }>
-): string {
+export function weightedMedianFixedPoint(values: Array<{ value: string; weight: number }>): string {
   if (values.length === 0) {
     throw new Error('cannot compute weighted median of empty set');
   }

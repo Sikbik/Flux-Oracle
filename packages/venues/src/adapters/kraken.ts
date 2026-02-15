@@ -38,10 +38,7 @@ export class KrakenAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return [
-      ...parseKrakenTradeMessage(payload),
-      ...parseKrakenTickerMessage(payload)
-    ];
+    return [...parseKrakenTradeMessage(payload), ...parseKrakenTickerMessage(payload)];
   }
 }
 

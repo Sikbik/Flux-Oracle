@@ -103,8 +103,20 @@ Input transactions JSON format:
 
 ```json
 [
-  { "txid": "abc", "timestamp": 1707346812, "direction": "in", "amount": "2.00000000", "asset": "FLUX" },
-  { "txid": "def", "timestamp": 1707346899, "direction": "out", "amount": "3.00000000", "asset": "FLUX" }
+  {
+    "txid": "abc",
+    "timestamp": 1707346812,
+    "direction": "in",
+    "amount": "2.00000000",
+    "asset": "FLUX"
+  },
+  {
+    "txid": "def",
+    "timestamp": 1707346899,
+    "direction": "out",
+    "amount": "3.00000000",
+    "asset": "FLUX"
+  }
 ]
 ```
 

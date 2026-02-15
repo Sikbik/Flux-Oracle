@@ -9,6 +9,14 @@ export {
 } from './hourly.js';
 
 export {
+  buildWindowReportFromMinutes,
+  WindowReportFinalizer,
+  type WindowBuildResult,
+  type WindowFinalizerConfig,
+  type WindowReportPayload
+} from './window.js';
+
+export {
   aggregateMinuteReferencePrice,
   medianFixedPoint,
   weightedMedianFixedPoint

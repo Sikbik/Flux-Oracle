@@ -1,9 +1,12 @@
 export {
   anchorHourReport,
+  anchorWindowReport,
   buildAnchorPayload,
   DEFAULT_PAIR_ID_MAP,
   type AnchorHourReportOptions,
   type AnchorHourReportResult,
+  type AnchorWindowReportOptions,
+  type AnchorWindowReportResult,
   type PairIdMap
 } from './service.js';
 

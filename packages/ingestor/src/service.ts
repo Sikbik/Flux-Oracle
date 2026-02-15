@@ -219,17 +219,13 @@ export class IngestorService {
     });
 
     await new Promise<void>((resolve, reject) => {
-      this.healthServer?.listen(
-        this.config.healthPort,
-        this.config.healthHost,
-        (error?: Error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
+      this.healthServer?.listen(this.config.healthPort, this.config.healthHost, (error?: Error) => {
+        if (error) {
+          reject(error);
+          return;
         }
-      );
+        resolve();
+      });
     });
   }
 }

@@ -33,10 +33,7 @@ export class BinanceAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return [
-      ...parseBinanceTradeMessage(payload),
-      ...parseBinanceTickerMessage(payload)
-    ];
+    return [...parseBinanceTradeMessage(payload), ...parseBinanceTickerMessage(payload)];
   }
 }
 

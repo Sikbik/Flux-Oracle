@@ -122,9 +122,19 @@ async function main(): Promise<void> {
       .prepare('SELECT COUNT(*) AS count FROM anchors WHERE reporter_set_id IS NULL')
       .get() as { count: number };
 
+    const windowReportCount = db
+      .prepare('SELECT COUNT(*) AS count FROM window_reports WHERE reporter_set_id IS NULL')
+      .get() as { count: number };
+
+    const windowAnchorCount = db
+      .prepare('SELECT COUNT(*) AS count FROM window_anchors WHERE reporter_set_id IS NULL')
+      .get() as { count: number };
+
     if (parsed.dryRun) {
       console.log(`hour_reports_missing=${hourCount.count}`);
       console.log(`anchors_missing=${anchorCount.count}`);
+      console.log(`window_reports_missing=${windowReportCount.count}`);
+      console.log(`window_anchors_missing=${windowAnchorCount.count}`);
       console.log(`reporter_set_id=${reporterSetId}`);
       return;
     }
@@ -137,9 +147,19 @@ async function main(): Promise<void> {
       .prepare('UPDATE anchors SET reporter_set_id = ? WHERE reporter_set_id IS NULL')
       .run(reporterSetId);
 
+    const windowReportResult = db
+      .prepare('UPDATE window_reports SET reporter_set_id = ? WHERE reporter_set_id IS NULL')
+      .run(reporterSetId);
+
+    const windowAnchorResult = db
+      .prepare('UPDATE window_anchors SET reporter_set_id = ? WHERE reporter_set_id IS NULL')
+      .run(reporterSetId);
+
     console.log(`reporter_set_id=${reporterSetId}`);
     console.log(`hour_reports_updated=${hourResult.changes}`);
     console.log(`anchors_updated=${anchorResult.changes}`);
+    console.log(`window_reports_updated=${windowReportResult.changes}`);
+    console.log(`window_anchors_updated=${windowAnchorResult.changes}`);
   } finally {
     db.close();
   }

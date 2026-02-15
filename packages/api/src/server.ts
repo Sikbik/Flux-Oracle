@@ -6,10 +6,13 @@ import {
   decodeOpReturnPayload,
   hashHourlyReport,
   hashMinuteRecord,
+  hashWindowReport,
   minuteRange,
+  minuteRangeWindow,
   toMinuteTs,
   type HourlyReport,
-  type MinuteRecord
+  type MinuteRecord,
+  type WindowReport
 } from '@fpho/core';
 import { buildSignatureBitmap, hasQuorum, verifySignature, type ReporterRegistry } from '@fpho/p2p';
 
@@ -52,6 +55,10 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
         'GET /v1/hours',
         'GET /v1/report/:pair/:hour_ts',
         'GET /v1/verify/:pair/:hour_ts',
+        'GET /v1/window_anchors',
+        'GET /v1/windows',
+        'GET /v1/window_report/:pair/:window_seconds/:window_ts',
+        'GET /v1/verify_window/:pair/:window_seconds/:window_ts',
         'GET /v1/methodology',
         'GET /healthz',
         'GET /metrics'
@@ -554,8 +561,7 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
 
     const pair = params.pair;
     const hourTs = Number(params.hour_ts);
-    const checkMinuteRoot =
-      query.check_minute_root === '1' || query.check_minute_root === 'true';
+    const checkMinuteRoot = query.check_minute_root === '1' || query.check_minute_root === 'true';
 
     const report = db
       .prepare(
@@ -763,6 +769,623 @@ export function createApiServer(options: ApiServerOptions): FastifyInstance {
     };
   });
 
+  app.get('/v1/window_anchors', async (request, reply) => {
+    const {
+      pair = methodology.pair,
+      window_seconds,
+      start_window,
+      end_window,
+      limit = '100',
+      offset = '0'
+    } = request.query as {
+      pair?: string;
+      window_seconds?: string;
+      start_window?: string;
+      end_window?: string;
+      limit?: string;
+      offset?: string;
+    };
+
+    const resolvedLimit = Math.min(Math.max(Number(limit), 1), 1000);
+    const resolvedOffset = Math.max(Number(offset), 0);
+    const windowSeconds = window_seconds !== undefined ? Number(window_seconds) : null;
+    const startWindowTs = start_window !== undefined ? Number(start_window) : null;
+    const endWindowTs = end_window !== undefined ? Number(end_window) : null;
+
+    if (
+      Number.isNaN(resolvedLimit) ||
+      Number.isNaN(resolvedOffset) ||
+      (windowSeconds !== null && Number.isNaN(windowSeconds)) ||
+      (startWindowTs !== null && Number.isNaN(startWindowTs)) ||
+      (endWindowTs !== null && Number.isNaN(endWindowTs)) ||
+      (startWindowTs !== null && endWindowTs !== null && startWindowTs > endWindowTs)
+    ) {
+      reply.code(400);
+      return { error: 'invalid_pagination_or_range' };
+    }
+
+    let sql = `
+      SELECT
+        txid,
+        pair,
+        window_seconds,
+        window_ts,
+        report_hash,
+        block_height,
+        block_hash,
+        confirmed,
+        ipfs_cid,
+        ipfs_mirror_url,
+        op_return_hex
+      FROM window_anchors
+      WHERE pair = ?
+    `;
+
+    const params: unknown[] = [pair];
+
+    if (windowSeconds !== null) {
+      sql += ' AND window_seconds = ?';
+      params.push(windowSeconds);
+    }
+
+    if (startWindowTs !== null) {
+      sql += ' AND window_ts >= ?';
+      params.push(startWindowTs);
+    }
+
+    if (endWindowTs !== null) {
+      sql += ' AND window_ts <= ?';
+      params.push(endWindowTs);
+    }
+
+    sql += ' ORDER BY window_ts ASC LIMIT ? OFFSET ?';
+    params.push(resolvedLimit, resolvedOffset);
+
+    const rows = db.prepare(sql).all(...params) as Array<{
+      txid: string;
+      pair: string;
+      window_seconds: number;
+      window_ts: number;
+      report_hash: string;
+      block_height: number | null;
+      block_hash: string | null;
+      confirmed: number;
+      ipfs_cid: string | null;
+      ipfs_mirror_url: string | null;
+      op_return_hex: string | null;
+    }>;
+
+    return {
+      pair,
+      window_seconds: windowSeconds,
+      start_window: startWindowTs,
+      end_window: endWindowTs,
+      limit: resolvedLimit,
+      offset: resolvedOffset,
+      items: rows.map((row) => ({
+        txid: row.txid,
+        pair: row.pair,
+        window_seconds: row.window_seconds,
+        window_ts: row.window_ts,
+        report_hash: row.report_hash,
+        block_height: row.block_height,
+        block_hash: row.block_hash,
+        confirmed: row.confirmed === 1,
+        ipfs_cid: row.ipfs_cid,
+        ipfs_mirror_url: row.ipfs_mirror_url,
+        op_return_hex: row.op_return_hex
+      }))
+    };
+  });
+
+  app.get('/v1/windows', async (request, reply) => {
+    const {
+      pair = methodology.pair,
+      window_seconds,
+      start,
+      end,
+      limit = '100',
+      offset = '0'
+    } = request.query as {
+      pair?: string;
+      window_seconds?: string;
+      start?: string;
+      end?: string;
+      limit?: string;
+      offset?: string;
+    };
+
+    if (!start || !end || Number.isNaN(Number(start)) || Number.isNaN(Number(end))) {
+      reply.code(400);
+      return {
+        error: 'invalid_range'
+      };
+    }
+
+    const startTs = Number(start);
+    const endTs = Number(end);
+    const resolvedLimit = Math.min(Math.max(Number(limit), 1), 1000);
+    const resolvedOffset = Math.max(Number(offset), 0);
+    const windowSeconds = window_seconds !== undefined ? Number(window_seconds) : null;
+
+    if (
+      startTs > endTs ||
+      Number.isNaN(resolvedLimit) ||
+      Number.isNaN(resolvedOffset) ||
+      (windowSeconds !== null && Number.isNaN(windowSeconds))
+    ) {
+      reply.code(400);
+      return {
+        error: 'invalid_pagination_or_range'
+      };
+    }
+
+    const rows = db
+      .prepare(
+        `
+          SELECT
+            w.window_ts,
+            w.window_seconds,
+            w.open_fp,
+            w.high_fp,
+            w.low_fp,
+            w.close_fp,
+            w.minute_root,
+            w.report_hash,
+            w.ruleset_version,
+            w.available_minutes,
+            w.degraded,
+            w.reporter_set_id,
+            w.signatures_json,
+            a.txid AS anchor_txid,
+            a.confirmed AS anchor_confirmed
+          FROM window_reports w
+          LEFT JOIN window_anchors a
+            ON a.pair = w.pair
+            AND a.window_seconds = w.window_seconds
+            AND a.window_ts = w.window_ts
+          WHERE w.pair = ?
+            AND w.window_ts >= ?
+            AND w.window_ts <= ?
+            AND (? IS NULL OR w.window_seconds = ?)
+          ORDER BY w.window_seconds ASC, w.window_ts ASC
+          LIMIT ?
+          OFFSET ?
+        `
+      )
+      .all(
+        pair,
+        startTs,
+        endTs,
+        windowSeconds,
+        windowSeconds,
+        resolvedLimit,
+        resolvedOffset
+      ) as Array<{
+      window_ts: number;
+      window_seconds: number;
+      open_fp: string | null;
+      high_fp: string | null;
+      low_fp: string | null;
+      close_fp: string | null;
+      minute_root: string;
+      report_hash: string;
+      ruleset_version: string;
+      available_minutes: number;
+      degraded: number;
+      reporter_set_id: string | null;
+      signatures_json: string | null;
+      anchor_txid: string | null;
+      anchor_confirmed: number | null;
+    }>;
+
+    return {
+      pair,
+      window_seconds: windowSeconds,
+      start: startTs,
+      end: endTs,
+      limit: resolvedLimit,
+      offset: resolvedOffset,
+      items: rows.map((row) => ({
+        window_ts: row.window_ts,
+        window_seconds: row.window_seconds,
+        open_fp: row.open_fp,
+        high_fp: row.high_fp,
+        low_fp: row.low_fp,
+        close_fp: row.close_fp,
+        minute_root: row.minute_root,
+        report_hash: row.report_hash,
+        ruleset_version: row.ruleset_version,
+        available_minutes: row.available_minutes,
+        degraded: row.degraded === 1,
+        reporter_set_id: row.reporter_set_id,
+        signatures_count: countSignatures(row.signatures_json),
+        anchored: row.anchor_txid !== null,
+        anchor_txid: row.anchor_txid,
+        anchor_confirmed: row.anchor_confirmed === 1
+      }))
+    };
+  });
+
+  app.get('/v1/window_report/:pair/:window_seconds/:window_ts', async (request, reply) => {
+    const params = request.params as {
+      pair?: string;
+      window_seconds?: string;
+      window_ts?: string;
+    };
+
+    if (
+      !params.pair ||
+      !params.window_seconds ||
+      !params.window_ts ||
+      Number.isNaN(Number(params.window_seconds)) ||
+      Number.isNaN(Number(params.window_ts))
+    ) {
+      reply.code(400);
+      return { error: 'invalid_report_key' };
+    }
+
+    const pair = params.pair;
+    const windowSeconds = Number(params.window_seconds);
+    const windowTs = Number(params.window_ts);
+
+    const report = db
+      .prepare(
+        `
+          SELECT
+            pair,
+            window_seconds,
+            window_ts,
+            open_fp,
+            high_fp,
+            low_fp,
+            close_fp,
+            minute_root,
+            report_hash,
+            ruleset_version,
+            available_minutes,
+            degraded,
+            reporter_set_id,
+            signatures_json,
+            created_at
+          FROM window_reports
+          WHERE pair = ?
+            AND window_seconds = ?
+            AND window_ts = ?
+          LIMIT 1
+        `
+      )
+      .get(pair, windowSeconds, windowTs) as
+      | {
+          pair: string;
+          window_seconds: number;
+          window_ts: number;
+          open_fp: string | null;
+          high_fp: string | null;
+          low_fp: string | null;
+          close_fp: string | null;
+          minute_root: string;
+          report_hash: string;
+          ruleset_version: string;
+          available_minutes: number;
+          degraded: number;
+          reporter_set_id: string | null;
+          signatures_json: string | null;
+          created_at: number;
+        }
+      | undefined;
+
+    if (!report) {
+      reply.code(404);
+      return {
+        error: 'report_not_found',
+        pair,
+        window_seconds: windowSeconds,
+        window_ts: windowTs
+      };
+    }
+
+    const anchor = db
+      .prepare(
+        `
+          SELECT
+            txid,
+            report_hash,
+            block_height,
+            block_hash,
+            confirmed,
+            ipfs_cid,
+            ipfs_mirror_url,
+            op_return_hex
+          FROM window_anchors
+          WHERE pair = ?
+            AND window_seconds = ?
+            AND window_ts = ?
+          LIMIT 1
+        `
+      )
+      .get(pair, windowSeconds, windowTs) as
+      | {
+          txid: string;
+          report_hash: string;
+          block_height: number | null;
+          block_hash: string | null;
+          confirmed: number;
+          ipfs_cid: string | null;
+          ipfs_mirror_url: string | null;
+          op_return_hex: string | null;
+        }
+      | undefined;
+
+    return {
+      pair,
+      window_seconds: windowSeconds,
+      window_ts: windowTs,
+      report: buildWindowReportPayload(report),
+      report_hash: report.report_hash,
+      reporter_set_id: report.reporter_set_id,
+      signatures: parseSignatures(report.signatures_json),
+      created_at: report.created_at,
+      anchor: anchor
+        ? {
+            txid: anchor.txid,
+            report_hash: anchor.report_hash,
+            block_height: anchor.block_height,
+            block_hash: anchor.block_hash,
+            confirmed: anchor.confirmed === 1,
+            ipfs_cid: anchor.ipfs_cid,
+            ipfs_mirror_url: anchor.ipfs_mirror_url,
+            op_return_hex: anchor.op_return_hex
+          }
+        : null
+    };
+  });
+
+  app.get('/v1/verify_window/:pair/:window_seconds/:window_ts', async (request, reply) => {
+    const params = request.params as {
+      pair?: string;
+      window_seconds?: string;
+      window_ts?: string;
+    };
+    const query = request.query as { check_minute_root?: string };
+
+    if (
+      !params.pair ||
+      !params.window_seconds ||
+      !params.window_ts ||
+      Number.isNaN(Number(params.window_seconds)) ||
+      Number.isNaN(Number(params.window_ts))
+    ) {
+      reply.code(400);
+      return { error: 'invalid_report_key' };
+    }
+
+    const pair = params.pair;
+    const windowSeconds = Number(params.window_seconds);
+    const windowTs = Number(params.window_ts);
+    const checkMinuteRoot = query.check_minute_root === '1' || query.check_minute_root === 'true';
+
+    const report = db
+      .prepare(
+        `
+            SELECT
+              pair,
+              window_seconds,
+              window_ts,
+              open_fp,
+              high_fp,
+              low_fp,
+              close_fp,
+              minute_root,
+              report_hash,
+              ruleset_version,
+              available_minutes,
+              degraded,
+              reporter_set_id,
+              signatures_json
+            FROM window_reports
+            WHERE pair = ?
+              AND window_seconds = ?
+              AND window_ts = ?
+            LIMIT 1
+          `
+      )
+      .get(pair, windowSeconds, windowTs) as
+      | {
+          pair: string;
+          window_seconds: number;
+          window_ts: number;
+          open_fp: string | null;
+          high_fp: string | null;
+          low_fp: string | null;
+          close_fp: string | null;
+          minute_root: string;
+          report_hash: string;
+          ruleset_version: string;
+          available_minutes: number;
+          degraded: number;
+          reporter_set_id: string | null;
+          signatures_json: string | null;
+        }
+      | undefined;
+
+    if (!report) {
+      reply.code(404);
+      return {
+        error: 'report_not_found',
+        pair,
+        window_seconds: windowSeconds,
+        window_ts: windowTs
+      };
+    }
+
+    const anchor = db
+      .prepare(
+        `
+            SELECT txid, report_hash, confirmed, op_return_hex
+            FROM window_anchors
+            WHERE pair = ?
+              AND window_seconds = ?
+              AND window_ts = ?
+            LIMIT 1
+          `
+      )
+      .get(pair, windowSeconds, windowTs) as
+      | {
+          txid: string;
+          report_hash: string;
+          confirmed: number;
+          op_return_hex: string | null;
+        }
+      | undefined;
+
+    if (!anchor) {
+      reply.code(404);
+      return {
+        error: 'anchor_not_found',
+        pair,
+        window_seconds: windowSeconds,
+        window_ts: windowTs
+      };
+    }
+
+    if (!report.reporter_set_id) {
+      reply.code(422);
+      return {
+        error: 'reporter_set_missing',
+        pair,
+        window_seconds: windowSeconds,
+        window_ts: windowTs
+      };
+    }
+
+    let registry: ReporterRegistry;
+    try {
+      registry = loadReporterRegistry(db, report.reporter_set_id);
+    } catch {
+      reply.code(422);
+      return {
+        error: 'reporter_set_not_found',
+        pair,
+        window_seconds: windowSeconds,
+        window_ts: windowTs
+      };
+    }
+
+    const reportPayload = buildWindowReportPayload(report);
+    const computedReportHash = hashWindowReport(reportPayload as WindowReport);
+    const signatures = parseSignatures(report.signatures_json);
+
+    const expectedPairId = pairToId(pair);
+    const expectedSigBitmap = buildSignatureBitmap(registry, signatures);
+
+    const checks = {
+      report_hash_match: anchor.report_hash === report.report_hash,
+      report_hash_valid: computedReportHash === report.report_hash,
+      op_return_present:
+        typeof anchor.op_return_hex === 'string' && anchor.op_return_hex.length > 0,
+      op_return_decoded: false,
+      op_return_pair_match: false,
+      op_return_window_match: false,
+      op_return_window_seconds_match: false,
+      op_return_close_match: false,
+      op_return_report_hash_match: false,
+      op_return_sig_bitmap_match: false,
+      quorum_valid: false,
+      minute_root_match: true
+    };
+
+    let decodedPayload: {
+      pairId: number;
+      hourTs: number;
+      windowSeconds?: number;
+      closeFp: string;
+      reportHash: string;
+      sigBitmap: number;
+    } | null = null;
+
+    if (checks.op_return_present && anchor.op_return_hex) {
+      try {
+        const decoded = decodeOpReturnPayload(Buffer.from(anchor.op_return_hex, 'hex'));
+        decodedPayload = {
+          pairId: decoded.pairId,
+          hourTs: decoded.hourTs,
+          windowSeconds: decoded.windowSeconds,
+          closeFp: decoded.closeFp,
+          reportHash: decoded.reportHash,
+          sigBitmap: decoded.sigBitmap
+        };
+
+        checks.op_return_decoded = true;
+        checks.op_return_pair_match = expectedPairId === null || decoded.pairId === expectedPairId;
+        checks.op_return_window_match = decoded.hourTs === report.window_ts;
+        checks.op_return_window_seconds_match =
+          typeof decoded.windowSeconds === 'number' &&
+          decoded.windowSeconds === report.window_seconds;
+        checks.op_return_close_match =
+          report.close_fp !== null && decoded.closeFp === report.close_fp;
+        checks.op_return_report_hash_match = decoded.reportHash === report.report_hash;
+        checks.op_return_sig_bitmap_match = decoded.sigBitmap === expectedSigBitmap;
+      } catch {
+        checks.op_return_decoded = false;
+      }
+    }
+
+    const validSigners = await verifyQuorumSignatures(
+      registry,
+      windowTs,
+      report.report_hash,
+      signatures
+    );
+    checks.quorum_valid = hasQuorum(
+      registry,
+      Object.fromEntries(validSigners.map((id) => [id, 'valid']))
+    );
+
+    if (checkMinuteRoot) {
+      const minuteRows = db
+        .prepare(
+          `
+              SELECT minute_ts, reference_price_fp, venues_used, degraded, degraded_reason
+              FROM minute_prices
+              WHERE pair = ?
+                AND minute_ts >= ?
+                AND minute_ts < ?
+              ORDER BY minute_ts ASC
+            `
+        )
+        .all(pair, windowTs, windowTs + windowSeconds) as Array<{
+        minute_ts: number;
+        reference_price_fp: string | null;
+        venues_used: number;
+        degraded: number;
+        degraded_reason: string | null;
+      }>;
+
+      const computedMinuteRoot = computeWindowMinuteRoot(pair, windowTs, windowSeconds, minuteRows);
+      checks.minute_root_match = computedMinuteRoot === report.minute_root;
+    }
+
+    const verified = Object.values(checks).every((value) => value);
+
+    return {
+      pair,
+      window_seconds: windowSeconds,
+      window_ts: windowTs,
+      verified,
+      checks,
+      report_hash: report.report_hash,
+      computed_report_hash: computedReportHash,
+      reporter_set_id: report.reporter_set_id,
+      valid_signers: validSigners,
+      anchor: {
+        txid: anchor.txid,
+        confirmed: anchor.confirmed === 1
+      },
+      decoded_payload: decodedPayload
+    };
+  });
+
   app.get('/v1/methodology', async () => methodology);
 
   app.get('/healthz', async () => ({ ok: true }));
@@ -834,6 +1457,34 @@ function buildHourlyReportPayload(report: {
   } satisfies HourlyReport;
 }
 
+function buildWindowReportPayload(report: {
+  pair: string;
+  window_seconds: number;
+  window_ts: number;
+  open_fp: string | null;
+  high_fp: string | null;
+  low_fp: string | null;
+  close_fp: string | null;
+  minute_root: string;
+  ruleset_version: string;
+  available_minutes: number;
+  degraded: number;
+}): WindowReport {
+  return {
+    pair: report.pair,
+    window_seconds: report.window_seconds.toString(),
+    window_ts: report.window_ts.toString(),
+    open_fp: report.open_fp,
+    high_fp: report.high_fp,
+    low_fp: report.low_fp,
+    close_fp: report.close_fp,
+    minute_root: report.minute_root,
+    ruleset_version: report.ruleset_version,
+    available_minutes: report.available_minutes.toString(),
+    degraded: report.degraded === 1
+  } satisfies WindowReport;
+}
+
 function computeMinuteRoot(
   pair: string,
   hourTs: number,
@@ -848,6 +1499,38 @@ function computeMinuteRoot(
   const minuteMap = new Map(minuteItems.map((item) => [item.minute_ts, item]));
 
   const minuteRecords = minuteRange(hourTs).map((minuteTs) => {
+    const minute = minuteMap.get(minuteTs);
+    const degraded = minute ? minute.degraded === 1 : true;
+
+    return {
+      pair,
+      minute_ts: minuteTs.toString(),
+      reference_price_fp: minute?.reference_price_fp ?? null,
+      venues_used: (minute?.venues_used ?? 0).toString(),
+      degraded,
+      degraded_reason: minute?.degraded_reason ?? 'missing_minute'
+    } satisfies MinuteRecord;
+  });
+
+  const hashes = minuteRecords.map((record) => hashMinuteRecord(record));
+  return buildMerkleRoot(hashes);
+}
+
+function computeWindowMinuteRoot(
+  pair: string,
+  windowTs: number,
+  windowSeconds: number,
+  minuteItems: Array<{
+    minute_ts: number;
+    reference_price_fp: string | null;
+    venues_used: number;
+    degraded: number;
+    degraded_reason: string | null;
+  }>
+): string {
+  const minuteMap = new Map(minuteItems.map((item) => [item.minute_ts, item]));
+
+  const minuteRecords = minuteRangeWindow(windowTs, windowSeconds).map((minuteTs) => {
     const minute = minuteMap.get(minuteTs);
     const degraded = minute ? minute.degraded === 1 : true;
 
@@ -899,10 +1582,7 @@ function signaturePayload(hourTs: number, reportHash: string): string {
   return `fpho:${hourTs}:${reportHash}`;
 }
 
-function loadReporterRegistry(
-  db: Database.Database,
-  reporterSetId: string
-): ReporterRegistry {
+function loadReporterRegistry(db: Database.Database, reporterSetId: string): ReporterRegistry {
   const row = db
     .prepare(
       `

@@ -3,6 +3,7 @@ import { sha256 } from './hash.js';
 
 export type MinuteRecord = CanonicalJson;
 export type HourlyReport = CanonicalJson;
+export type WindowReport = CanonicalJson;
 
 export function canonicalizeMinuteRecord(minuteRecord: MinuteRecord): Uint8Array {
   assertNoNumbers(minuteRecord);
@@ -20,4 +21,13 @@ export function canonicalizeHourlyReport(report: HourlyReport): Uint8Array {
 
 export function hashHourlyReport(report: HourlyReport): string {
   return sha256(canonicalizeHourlyReport(report));
+}
+
+export function canonicalizeWindowReport(report: WindowReport): Uint8Array {
+  assertNoNumbers(report);
+  return canonicalizeJsonToBytes(report as CanonicalJson);
+}
+
+export function hashWindowReport(report: WindowReport): string {
+  return sha256(canonicalizeWindowReport(report));
 }

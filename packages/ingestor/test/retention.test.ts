@@ -73,4 +73,3 @@ describe('raw tick retention', () => {
     }
   });
 });
-

@@ -72,6 +72,7 @@ export async function scanAnchors(options: IndexerScanOptions): Promise<IndexerS
         }
 
         db.prepare('DELETE FROM anchors WHERE block_height >= ?').run(stableHeight);
+        db.prepare('DELETE FROM window_anchors WHERE block_height >= ?').run(stableHeight);
         stableHeight -= 1;
         reorgDepth += 1;
         stableHash = stableHeight > 0 ? await options.chain.getBlockHash(stableHeight) : null;
@@ -115,40 +116,79 @@ export async function scanAnchors(options: IndexerScanOptions): Promise<IndexerS
             continue;
           }
 
-          db.prepare(
-            `
-              INSERT INTO anchors(
-                txid,
-                pair,
-                hour_ts,
-                report_hash,
-                block_height,
-                block_hash,
-                confirmed,
-                op_return_hex,
-                created_at
-              )
-              VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-              ON CONFLICT(pair, hour_ts)
-              DO UPDATE SET
-                txid = excluded.txid,
-                report_hash = excluded.report_hash,
-                block_height = excluded.block_height,
-                block_hash = excluded.block_hash,
-                confirmed = excluded.confirmed,
-                op_return_hex = excluded.op_return_hex,
-                created_at = excluded.created_at
-            `
-          ).run(
-            transaction.txid,
-            pair,
-            decoded.hourTs,
-            decoded.reportHash,
-            height,
-            block.hash,
-            payloadHex,
-            block.time ?? Math.floor(Date.now() / 1000)
-          );
+          if (typeof decoded.windowSeconds === 'number') {
+            db.prepare(
+              `
+                INSERT INTO window_anchors(
+                  txid,
+                  pair,
+                  window_seconds,
+                  window_ts,
+                  report_hash,
+                  block_height,
+                  block_hash,
+                  confirmed,
+                  op_return_hex,
+                  created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                ON CONFLICT(pair, window_seconds, window_ts)
+                DO UPDATE SET
+                  txid = excluded.txid,
+                  report_hash = excluded.report_hash,
+                  block_height = excluded.block_height,
+                  block_hash = excluded.block_hash,
+                  confirmed = excluded.confirmed,
+                  op_return_hex = excluded.op_return_hex,
+                  created_at = excluded.created_at
+              `
+            ).run(
+              transaction.txid,
+              pair,
+              decoded.windowSeconds,
+              decoded.hourTs,
+              decoded.reportHash,
+              height,
+              block.hash,
+              payloadHex,
+              block.time ?? Math.floor(Date.now() / 1000)
+            );
+          } else {
+            db.prepare(
+              `
+                INSERT INTO anchors(
+                  txid,
+                  pair,
+                  hour_ts,
+                  report_hash,
+                  block_height,
+                  block_hash,
+                  confirmed,
+                  op_return_hex,
+                  created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+                ON CONFLICT(pair, hour_ts)
+                DO UPDATE SET
+                  txid = excluded.txid,
+                  report_hash = excluded.report_hash,
+                  block_height = excluded.block_height,
+                  block_hash = excluded.block_hash,
+                  confirmed = excluded.confirmed,
+                  op_return_hex = excluded.op_return_hex,
+                  created_at = excluded.created_at
+              `
+            ).run(
+              transaction.txid,
+              pair,
+              decoded.hourTs,
+              decoded.reportHash,
+              height,
+              block.hash,
+              payloadHex,
+              block.time ?? Math.floor(Date.now() / 1000)
+            );
+          }
 
           anchorsUpserted += 1;
         }
@@ -172,13 +212,15 @@ function tryDecodePayload(payloadHex: string): {
   pairId: number;
   hourTs: number;
   reportHash: string;
+  windowSeconds?: number;
 } | null {
   try {
     const decoded = decodeOpReturnPayload(Buffer.from(payloadHex, 'hex'));
     return {
       pairId: decoded.pairId,
       hourTs: decoded.hourTs,
-      reportHash: decoded.reportHash
+      reportHash: decoded.reportHash,
+      windowSeconds: decoded.windowSeconds
     };
   } catch {
     return null;

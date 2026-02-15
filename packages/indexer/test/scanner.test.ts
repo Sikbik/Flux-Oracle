@@ -132,6 +132,90 @@ describe('indexer scanner', () => {
       db.close();
     }
   });
+
+  it('stores version 2 payloads in window_anchors', async () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'fpho-indexer-window-'));
+    tempPaths.push(tempDir);
+
+    const dbPath = path.join(tempDir, 'indexer.sqlite');
+    runMigrations({ dbPath, migrationsDir: migrationDir });
+
+    const payloadHex = Buffer.from(
+      encodeOpReturnPayload({
+        version: 2,
+        pairId: 1,
+        hourTs: 1707346800,
+        windowSeconds: 600,
+        closeFp: '62750000',
+        reportHash: 'c'.repeat(64),
+        sigBitmap: 3
+      })
+    ).toString('hex');
+
+    const chain = new FixtureChain(
+      [
+        {
+          hash: 'block-w1',
+          height: 1,
+          previousblockhash: 'genesis',
+          tx: ['tx-w1'],
+          time: 1707346890
+        }
+      ],
+      {
+        'tx-w1': {
+          txid: 'tx-w1',
+          vout: [{ scriptPubKey: { asm: `OP_RETURN ${payloadHex}` } }]
+        }
+      }
+    );
+
+    const scan = await scanAnchors({
+      dbPath,
+      chain
+    });
+
+    expect(scan).toMatchObject({
+      scannedFrom: 1,
+      scannedTo: 1,
+      anchorsUpserted: 1
+    });
+
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      const rows = db
+        .prepare(
+          `
+            SELECT txid, window_seconds, window_ts, report_hash, block_height, block_hash, confirmed
+            FROM window_anchors
+            ORDER BY window_ts ASC
+          `
+        )
+        .all() as Array<{
+        txid: string;
+        window_seconds: number;
+        window_ts: number;
+        report_hash: string;
+        block_height: number | null;
+        block_hash: string | null;
+        confirmed: number;
+      }>;
+
+      expect(rows).toEqual([
+        {
+          txid: 'tx-w1',
+          window_seconds: 600,
+          window_ts: 1707346800,
+          report_hash: 'c'.repeat(64),
+          block_height: 1,
+          block_hash: 'block-w1',
+          confirmed: 1
+        }
+      ]);
+    } finally {
+      db.close();
+    }
+  });
 });
 
 class FixtureChain implements FluxChainReader {

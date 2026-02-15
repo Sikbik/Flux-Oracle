@@ -1,8 +1,10 @@
 const MAGIC = 'FPHO';
 const MAGIC_BYTES = Buffer.from(MAGIC, 'ascii');
 
-const VERSION = 1;
-const PAYLOAD_SIZE_BYTES = 54;
+const VERSION_V1 = 1;
+const VERSION_V2 = 2;
+const PAYLOAD_V1_SIZE_BYTES = 54;
+const PAYLOAD_V2_SIZE_BYTES = 58;
 const MAX_TARGET_BYTES = 80;
 
 const MAX_I64 = 9223372036854775807n;
@@ -12,6 +14,7 @@ export interface OpReturnPayload {
   version?: number;
   pairId: number;
   hourTs: number;
+  windowSeconds?: number;
   closeFp: string;
   reportHash: string;
   sigBitmap: number;
@@ -25,10 +28,8 @@ export class OpReturnCodecError extends Error {
 }
 
 export function encodeOpReturnPayload(payload: OpReturnPayload): Uint8Array {
-  const version = payload.version ?? VERSION;
-  if (version !== VERSION) {
-    throw new OpReturnCodecError(`unsupported version: ${version}`);
-  }
+  const version =
+    payload.version ?? (payload.windowSeconds !== undefined ? VERSION_V2 : VERSION_V1);
 
   assertUInt8(payload.pairId, 'pairId');
   assertUInt32(payload.hourTs, 'hourTs');
@@ -37,26 +38,60 @@ export function encodeOpReturnPayload(payload: OpReturnPayload): Uint8Array {
   const closeFp = parseI64(payload.closeFp, 'closeFp');
   const reportHashBytes = parseReportHash(payload.reportHash);
 
-  const bytes = new Uint8Array(PAYLOAD_SIZE_BYTES);
-  const view = new DataView(bytes.buffer);
+  if (version === VERSION_V1) {
+    if (payload.windowSeconds !== undefined) {
+      throw new OpReturnCodecError('windowSeconds not supported in version 1 payloads');
+    }
 
-  bytes.set(MAGIC_BYTES, 0);
-  view.setUint8(4, version);
-  view.setUint8(5, payload.pairId);
-  view.setUint32(6, payload.hourTs, false);
-  view.setBigInt64(10, closeFp, false);
-  bytes.set(reportHashBytes, 18);
-  view.setUint32(50, payload.sigBitmap, false);
+    const bytes = new Uint8Array(PAYLOAD_V1_SIZE_BYTES);
+    const view = new DataView(bytes.buffer);
 
-  if (bytes.length > MAX_TARGET_BYTES) {
-    throw new OpReturnCodecError(`payload too large: ${bytes.length} bytes`);
+    bytes.set(MAGIC_BYTES, 0);
+    view.setUint8(4, version);
+    view.setUint8(5, payload.pairId);
+    view.setUint32(6, payload.hourTs, false);
+    view.setBigInt64(10, closeFp, false);
+    bytes.set(reportHashBytes, 18);
+    view.setUint32(50, payload.sigBitmap, false);
+
+    if (bytes.length > MAX_TARGET_BYTES) {
+      throw new OpReturnCodecError(`payload too large: ${bytes.length} bytes`);
+    }
+
+    return bytes;
   }
 
-  return bytes;
+  if (version === VERSION_V2) {
+    if (payload.windowSeconds === undefined) {
+      throw new OpReturnCodecError('windowSeconds required for version 2 payloads');
+    }
+
+    assertUInt32(payload.windowSeconds, 'windowSeconds');
+
+    const bytes = new Uint8Array(PAYLOAD_V2_SIZE_BYTES);
+    const view = new DataView(bytes.buffer);
+
+    bytes.set(MAGIC_BYTES, 0);
+    view.setUint8(4, version);
+    view.setUint8(5, payload.pairId);
+    view.setUint32(6, payload.hourTs, false);
+    view.setUint32(10, payload.windowSeconds, false);
+    view.setBigInt64(14, closeFp, false);
+    bytes.set(reportHashBytes, 22);
+    view.setUint32(54, payload.sigBitmap, false);
+
+    if (bytes.length > MAX_TARGET_BYTES) {
+      throw new OpReturnCodecError(`payload too large: ${bytes.length} bytes`);
+    }
+
+    return bytes;
+  }
+
+  throw new OpReturnCodecError(`unsupported version: ${version}`);
 }
 
 export function decodeOpReturnPayload(bytes: Uint8Array): OpReturnPayload {
-  if (bytes.length !== PAYLOAD_SIZE_BYTES) {
+  if (bytes.length < 6) {
     throw new OpReturnCodecError(`invalid payload length: ${bytes.length}`);
   }
 
@@ -68,28 +103,63 @@ export function decodeOpReturnPayload(bytes: Uint8Array): OpReturnPayload {
   }
 
   const version = view.getUint8(4);
-  if (version !== VERSION) {
-    throw new OpReturnCodecError(`unsupported version: ${version}`);
+  if (version === VERSION_V1) {
+    if (bytes.length !== PAYLOAD_V1_SIZE_BYTES) {
+      throw new OpReturnCodecError(`invalid payload length: ${bytes.length}`);
+    }
+
+    const pairId = view.getUint8(5);
+    const hourTs = view.getUint32(6, false);
+    const closeFp = view.getBigInt64(10, false).toString();
+    const reportHash = Buffer.from(bytes.subarray(18, 50)).toString('hex');
+    const sigBitmap = view.getUint32(50, false);
+
+    return {
+      version,
+      pairId,
+      hourTs,
+      closeFp,
+      reportHash,
+      sigBitmap
+    };
   }
 
-  const pairId = view.getUint8(5);
-  const hourTs = view.getUint32(6, false);
-  const closeFp = view.getBigInt64(10, false).toString();
-  const reportHash = Buffer.from(bytes.subarray(18, 50)).toString('hex');
-  const sigBitmap = view.getUint32(50, false);
+  if (version === VERSION_V2) {
+    if (bytes.length !== PAYLOAD_V2_SIZE_BYTES) {
+      throw new OpReturnCodecError(`invalid payload length: ${bytes.length}`);
+    }
 
-  return {
-    version,
-    pairId,
-    hourTs,
-    closeFp,
-    reportHash,
-    sigBitmap
-  };
+    const pairId = view.getUint8(5);
+    const hourTs = view.getUint32(6, false);
+    const windowSeconds = view.getUint32(10, false);
+    const closeFp = view.getBigInt64(14, false).toString();
+    const reportHash = Buffer.from(bytes.subarray(22, 54)).toString('hex');
+    const sigBitmap = view.getUint32(54, false);
+
+    return {
+      version,
+      pairId,
+      hourTs,
+      windowSeconds,
+      closeFp,
+      reportHash,
+      sigBitmap
+    };
+  }
+
+  throw new OpReturnCodecError(`unsupported version: ${version}`);
 }
 
-export function payloadSizeBytes(): number {
-  return PAYLOAD_SIZE_BYTES;
+export function payloadSizeBytes(version = VERSION_V1): number {
+  if (version === VERSION_V1) {
+    return PAYLOAD_V1_SIZE_BYTES;
+  }
+
+  if (version === VERSION_V2) {
+    return PAYLOAD_V2_SIZE_BYTES;
+  }
+
+  throw new OpReturnCodecError(`unsupported version: ${version}`);
 }
 
 function assertUInt8(value: number, field: string): void {

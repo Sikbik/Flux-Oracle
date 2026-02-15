@@ -40,10 +40,7 @@ export class GateAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return [
-      ...parseGateTradeMessage(payload),
-      ...parseGateTickerMessage(payload)
-    ];
+    return [...parseGateTradeMessage(payload), ...parseGateTickerMessage(payload)];
   }
 }
 

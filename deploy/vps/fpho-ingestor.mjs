@@ -31,4 +31,3 @@ console.log('[ingestor] started', {
 setInterval(() => {
   console.log('[ingestor] stats', JSON.stringify(service.getStats()));
 }, 60_000);
-

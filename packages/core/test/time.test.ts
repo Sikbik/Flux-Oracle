@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { minuteRange, toHourTs, toMinuteTs } from '../src/index.js';
+import { minuteRange, minuteRangeWindow, toHourTs, toMinuteTs, toWindowTs } from '../src/index.js';
 
 describe('time helpers', () => {
   it('rounds to minute boundaries', () => {
@@ -20,6 +20,23 @@ describe('time helpers', () => {
     expect(values).toHaveLength(60);
     expect(values[0]).toBe(3600);
     expect(values[59]).toBe(7140);
+
+    for (let index = 1; index < values.length; index += 1) {
+      expect(values[index] - values[index - 1]).toBe(60);
+    }
+  });
+
+  it('rounds to arbitrary window boundaries', () => {
+    expect(toWindowTs(119, 300)).toBe(0);
+    expect(toWindowTs(300, 300)).toBe(300);
+    expect(toWindowTs(599, 300)).toBe(300);
+  });
+
+  it('returns an ordered window minute range', () => {
+    const values = minuteRangeWindow(599, 600);
+    expect(values).toHaveLength(10);
+    expect(values[0]).toBe(0);
+    expect(values[9]).toBe(540);
 
     for (let index = 1; index < values.length; index += 1) {
       expect(values[index] - values[index - 1]).toBe(60);

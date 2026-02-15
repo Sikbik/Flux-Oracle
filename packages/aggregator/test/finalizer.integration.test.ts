@@ -134,9 +134,7 @@ describe('minute finalizer integration', () => {
     const verifyDb = new Database(dbPath, { readonly: true });
     try {
       const minuteRow = verifyDb
-        .prepare(
-          'SELECT minute_ts FROM minute_prices WHERE pair = ? ORDER BY minute_ts LIMIT 1'
-        )
+        .prepare('SELECT minute_ts FROM minute_prices WHERE pair = ? ORDER BY minute_ts LIMIT 1')
         .get('FLUXUSD') as { minute_ts: number };
 
       expect(minuteRow.minute_ts).toBe(1707350460);

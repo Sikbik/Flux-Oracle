@@ -43,10 +43,7 @@ export class KuCoinAdapter extends WebSocketVenueAdapter {
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return [
-      ...parseKuCoinTradeMessage(payload),
-      ...parseKuCoinTickerMessage(payload)
-    ];
+    return [...parseKuCoinTradeMessage(payload), ...parseKuCoinTickerMessage(payload)];
   }
 
   protected override getPingIntervalMs(): number | null {
@@ -67,7 +64,10 @@ export class KuCoinAdapter extends WebSocketVenueAdapter {
     }
 
     const payload = (await response.json()) as {
-      data?: { token?: string; instanceServers?: Array<{ endpoint?: string; pingInterval?: number }> };
+      data?: {
+        token?: string;
+        instanceServers?: Array<{ endpoint?: string; pingInterval?: number }>;
+      };
     };
 
     const token = payload.data?.token;
@@ -79,9 +79,7 @@ export class KuCoinAdapter extends WebSocketVenueAdapter {
 
     if (server?.pingInterval !== undefined) {
       const interval =
-        typeof server.pingInterval === 'number'
-          ? server.pingInterval
-          : Number(server.pingInterval);
+        typeof server.pingInterval === 'number' ? server.pingInterval : Number(server.pingInterval);
       if (Number.isFinite(interval)) {
         this.pingIntervalMs = interval;
       }

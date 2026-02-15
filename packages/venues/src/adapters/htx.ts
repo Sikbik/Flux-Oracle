@@ -45,7 +45,11 @@ export class HtxAdapter extends WebSocketVenueAdapter {
 }
 
 export function parseHtxTradeMessage(payload: unknown): NormalizationInput[] {
-  if (!isObject(payload) || typeof payload.ch !== 'string' || !payload.ch.includes('trade.detail')) {
+  if (
+    !isObject(payload) ||
+    typeof payload.ch !== 'string' ||
+    !payload.ch.includes('trade.detail')
+  ) {
     return [];
   }
 

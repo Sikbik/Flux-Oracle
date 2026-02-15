@@ -44,17 +44,13 @@ export class CryptoComAdapter extends WebSocketVenueAdapter {
     }
 
     const id = payload.id;
-    const heartbeatId =
-      typeof id === 'string' || typeof id === 'number' ? id : Date.now();
+    const heartbeatId = typeof id === 'string' || typeof id === 'number' ? id : Date.now();
     this.sendMessage({ id: heartbeatId, method: 'public/respond-heartbeat' });
     return true;
   }
 
   protected parseMessage(payload: unknown): NormalizationInput[] {
-    return [
-      ...parseCryptoComTradeMessage(payload),
-      ...parseCryptoComTickerMessage(payload)
-    ];
+    return [...parseCryptoComTradeMessage(payload), ...parseCryptoComTickerMessage(payload)];
   }
 }
 
