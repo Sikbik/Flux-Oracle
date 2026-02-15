@@ -5,7 +5,7 @@ import { DEFAULT_METHODOLOGY } from '../../packages/api/dist/index.js';
 
 const dbPath = process.env.FPHO_DB_PATH ?? 'data/fpho.sqlite';
 const pair = process.env.FPHO_PAIR ?? DEFAULT_METHODOLOGY.pair;
-const windowSeconds = Number(process.env.FPHO_WINDOW_SECONDS ?? '600');
+const windowSeconds = Number(process.env.FPHO_WINDOW_SECONDS ?? '300');
 const graceSeconds = Number(process.env.FPHO_GRACE_SECONDS ?? DEFAULT_METHODOLOGY.graceSeconds);
 
 const rpcEndpoint = process.env.FPHO_FLUX_RPC_ENDPOINT ?? 'http://127.0.0.1:16124';

@@ -4,7 +4,7 @@ import { DEFAULT_METHODOLOGY } from '../../packages/api/dist/index.js';
 const dbPath = process.env.FPHO_DB_PATH ?? 'data/fpho.sqlite';
 const pair = process.env.FPHO_PAIR ?? DEFAULT_METHODOLOGY.pair;
 const rulesetVersion = process.env.FPHO_RULESET_VERSION ?? 'v1';
-const windowSeconds = Number(process.env.FPHO_WINDOW_SECONDS ?? '600');
+const windowSeconds = Number(process.env.FPHO_WINDOW_SECONDS ?? '300');
 const graceSeconds = Number(process.env.FPHO_GRACE_SECONDS ?? DEFAULT_METHODOLOGY.graceSeconds);
 
 if (!Number.isFinite(windowSeconds) || windowSeconds <= 0) {

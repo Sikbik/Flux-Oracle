@@ -12,7 +12,7 @@ import {
 
 const dbPath = process.env.FPHO_DB_PATH ?? 'data/fpho.sqlite';
 const pair = process.env.FPHO_PAIR ?? 'FLUXUSD';
-const windowSeconds = Number(process.env.FPHO_WINDOW_SECONDS ?? '600');
+const windowSeconds = Number(process.env.FPHO_WINDOW_SECONDS ?? '300');
 const threshold = Number(process.env.FPHO_REPORTER_THRESHOLD ?? '2');
 
 if (!Number.isFinite(windowSeconds) || windowSeconds <= 0) {
