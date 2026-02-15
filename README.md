@@ -2,6 +2,67 @@
 
 FPHO provides minute-grade FLUXUSD fair market values and commits hourly reports to Flux so historical pricing is independently verifiable.
 
+## How The Decentralized Oracle Works
+
+```mermaid
+flowchart TB
+  %% High-level: multiple reporter nodes independently compute the same report_hash.
+  %% A leader ("invoker") collects a quorum of signatures and anchors the commitment on-chain.
+
+  subgraph Offchain["Off-chain Oracle Network (N reporter nodes)"]
+    direction TB
+
+    subgraph R1["Reporter Node A"]
+      direction TB
+      R1a["Ingest venues (public WS)"] --> R1b[(SQLite)]
+      R1b --> R1c["Aggregate minutes + compute reports"]
+      R1c --> R1d["Compute commitments (minute_root + report_hash)"]
+      R1d --> R1e["Sign report_hash (ed25519)"]
+    end
+
+    subgraph R2["Reporter Node B"]
+      direction TB
+      R2a["Ingest venues (public WS)"] --> R2b[(SQLite)]
+      R2b --> R2c["Aggregate minutes + compute reports"]
+      R2c --> R2d["Compute commitments (minute_root + report_hash)"]
+      R2d --> R2e["Sign report_hash (ed25519)"]
+    end
+
+    subgraph R3["Reporter Node C"]
+      direction TB
+      R3a["Ingest venues (public WS)"] --> R3b[(SQLite)]
+      R3b --> R3c["Aggregate minutes + compute reports"]
+      R3c --> R3d["Compute commitments (minute_root + report_hash)"]
+      R3d --> R3e["Sign report_hash (ed25519)"]
+    end
+
+    P2P["libp2p gossipsub\n(PROPOSE / SIG / FINAL)"]
+    R1e -- SIG --> P2P
+    R2e -- SIG --> P2P
+    R3e -- SIG --> P2P
+
+    Leader["Invoker / Leader\n(leader election)"]
+    P2P --> Leader
+
+    Final["Finalized report\n(t-of-N signatures + sig_bitmap)"]
+    Leader --> Final
+  end
+
+  Final --> IPFS["(optional) Publish report JSON to IPFS\nCID stored off-chain"]
+  Final --> Payload["Build OP_RETURN payload\n(magic+version+pair_id+ts+close_fp+report_hash+sig_bitmap)"]
+  Payload --> Chain["Flux on-chain anchor tx\n(OP_RETURN)"]
+
+  Chain --> Indexer["Indexer scans blocks\nand stores anchors"]
+  Indexer --> API["Public API + UI\n(price_at / minutes / verify)"]
+  API --> Clients["Clients/auditors verify:\n1) report_hash matches report JSON\n2) signatures meet quorum\n3) OP_RETURN matches on-chain tx"]
+```
+
+Security properties:
+
+- Every reporter independently recomputes the same `report_hash` from the minute dataset (deterministic canonicalization + hashing).
+- Reporters only sign if the proposed `report_hash` matches their locally computed one.
+- The invoker cannot fabricate prices: without a quorum of signatures the anchor is rejected by verifiers.
+
 ## Stack
 
 - Node.js `20.x`
