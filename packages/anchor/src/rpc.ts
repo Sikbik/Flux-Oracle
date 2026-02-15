@@ -104,7 +104,10 @@ export async function broadcastOpReturnHex(
     ? { [utxo.changeAddress]: utxo.changeAmount, data: opReturnHex }
     : { data: opReturnHex };
 
-  const unsignedHex = await transport.call<string>('createrawtransaction', [inputs, outputs]);
+  // Flux is a Zcash-derived chain with transaction expiry heights. If we let the daemon choose the
+  // default (often "current height + ~20 blocks"), a low/zero-fee anchor tx can expire before it is
+  // mined, stalling the UTXO chain. Setting expiryheight=0 disables expiry.
+  const unsignedHex = await transport.call<string>('createrawtransaction', [inputs, outputs, 0, 0]);
 
   let fundedHex = unsignedHex;
 

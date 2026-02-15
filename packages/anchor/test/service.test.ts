@@ -82,6 +82,8 @@ describe('anchor service', () => {
       'signrawtransaction',
       'sendrawtransaction'
     ]);
+    expect(rpcCalls[0]?.params?.[2]).toBe(0);
+    expect(rpcCalls[0]?.params?.[3]).toBe(0);
 
     const decodedPayload = decodeOpReturnPayload(Buffer.from(result.opReturnHex, 'hex'));
     expect(decodedPayload).toMatchObject({
@@ -186,6 +188,8 @@ describe('anchor service', () => {
       'signrawtransaction',
       'sendrawtransaction'
     ]);
+    expect(rpcCalls[0]?.params?.[2]).toBe(0);
+    expect(rpcCalls[0]?.params?.[3]).toBe(0);
 
     const decodedPayload = decodeOpReturnPayload(Buffer.from(result.opReturnHex, 'hex'));
     expect(decodedPayload).toMatchObject({
@@ -299,6 +303,8 @@ describe('anchor service', () => {
     expect(rpcCalls[0]?.params?.[1]).toMatchObject({
       [changeAddress]: '0.01000000'
     });
+    expect(rpcCalls[0]?.params?.[2]).toBe(0);
+    expect(rpcCalls[0]?.params?.[3]).toBe(0);
 
     const db = new Database(dbPath, { readonly: true });
     try {
