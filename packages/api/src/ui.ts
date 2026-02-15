@@ -298,6 +298,7 @@ export const DASHBOARD_HTML = `<!doctype html>
       .panel-chart {
         grid-row: 1 / span 4;
         min-height: 540px;
+        overflow: visible;
       }
 
       .panel-decoder {
@@ -476,6 +477,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         box-shadow: 0 18px 34px rgba(0, 0, 0, 0.5);
         pointer-events: none;
         min-width: 190px;
+        max-width: min(360px, calc(100vw - 28px));
         font-family: 'JetBrains Mono', monospace;
       }
 
@@ -484,6 +486,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         inset: 0;
         z-index: 30;
         pointer-events: none;
+        overflow: visible;
       }
 
       .tt-kicker {
