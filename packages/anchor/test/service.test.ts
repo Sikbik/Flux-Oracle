@@ -46,7 +46,7 @@ describe('anchor service', () => {
         if (method === 'fundrawtransaction') {
           return { hex: 'funded-tx' } as unknown;
         }
-        if (method === 'signrawtransactionwithwallet') {
+        if (method === 'signrawtransaction') {
           return { hex: 'signed-tx', complete: true } as unknown;
         }
         if (method === 'sendrawtransaction') {
@@ -79,7 +79,7 @@ describe('anchor service', () => {
     expect(rpcCalls.map((entry) => entry.method)).toEqual([
       'createrawtransaction',
       'fundrawtransaction',
-      'signrawtransactionwithwallet',
+      'signrawtransaction',
       'sendrawtransaction'
     ]);
 
@@ -149,7 +149,7 @@ describe('anchor service', () => {
         if (method === 'fundrawtransaction') {
           return { hex: 'funded-tx' } as unknown;
         }
-        if (method === 'signrawtransactionwithwallet') {
+        if (method === 'signrawtransaction') {
           return { hex: 'signed-tx', complete: true } as unknown;
         }
         if (method === 'sendrawtransaction') {
@@ -183,7 +183,7 @@ describe('anchor service', () => {
     expect(rpcCalls.map((entry) => entry.method)).toEqual([
       'createrawtransaction',
       'fundrawtransaction',
-      'signrawtransactionwithwallet',
+      'signrawtransaction',
       'sendrawtransaction'
     ]);
 
@@ -230,6 +230,86 @@ describe('anchor service', () => {
         ipfs_mirror_url: 'https://gateway.example/ipfs/bafywindowcid',
         op_return_hex: result.opReturnHex,
         confirmed: 0
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  it('supports anchoring with a rolling seed UTXO (lite-mode)', async () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'fpho-anchor-window-utxo-'));
+    tempPaths.push(tempDir);
+
+    const dbPath = path.join(tempDir, 'anchor.sqlite');
+    runMigrations({ dbPath, migrationsDir: migrationDir });
+
+    seedWindowReport(dbPath);
+
+    const rpcCalls: Array<{ method: string; params?: unknown[] }> = [];
+    const rpcTransport: FluxRpcTransport = {
+      async call(method: string, params?: unknown[]) {
+        rpcCalls.push({ method, params: params as unknown[] | undefined });
+
+        if (method === 'createrawtransaction') {
+          return 'raw-tx' as unknown;
+        }
+        if (method === 'signrawtransaction') {
+          return { hex: 'signed-tx', complete: true } as unknown;
+        }
+        if (method === 'sendrawtransaction') {
+          return 'txid-utxo' as unknown;
+        }
+
+        throw new Error(`unexpected rpc method: ${method}`);
+      }
+    };
+
+    const changeAddress = 't1-utxo-change-address';
+    const result = await anchorWindowReport({
+      dbPath,
+      pair: 'FLUXUSD',
+      windowSeconds: 600,
+      windowTs: 1707346800,
+      fluxRpc: rpcTransport,
+      fundingUtxo: {
+        txid: 'seed-txid',
+        vout: 7,
+        amount: '0.01',
+        address: changeAddress
+      }
+    });
+
+    expect(result.txid).toBe('txid-utxo');
+    expect(rpcCalls.map((entry) => entry.method)).toEqual([
+      'createrawtransaction',
+      'signrawtransaction',
+      'sendrawtransaction'
+    ]);
+
+    expect(rpcCalls[0]?.params?.[0]).toEqual([{ txid: 'seed-txid', vout: 7 }]);
+    expect(rpcCalls[0]?.params?.[1]).toMatchObject({
+      [changeAddress]: '0.01000000'
+    });
+
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      const utxoRow = db
+        .prepare(
+          `
+            SELECT txid, vout, amount, address
+            FROM anchor_utxo_state
+            WHERE id = 1
+          `
+        )
+        .get() as
+        | { txid: string | null; vout: number | null; amount: string | null; address: string | null }
+        | undefined;
+
+      expect(utxoRow).toEqual({
+        txid: 'txid-utxo',
+        vout: 0,
+        amount: '0.01000000',
+        address: changeAddress
       });
     } finally {
       db.close();

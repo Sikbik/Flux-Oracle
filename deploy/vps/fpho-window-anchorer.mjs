@@ -12,6 +12,12 @@ const rpcEndpoint = process.env.FPHO_FLUX_RPC_ENDPOINT ?? 'http://127.0.0.1:1612
 const rpcUsername = process.env.FPHO_FLUX_RPC_USERNAME;
 const rpcPassword = process.env.FPHO_FLUX_RPC_PASSWORD;
 
+const fundingUtxoTxid = process.env.FPHO_ANCHOR_UTXO_TXID;
+const fundingUtxoVoutRaw = process.env.FPHO_ANCHOR_UTXO_VOUT;
+const fundingUtxoAmount = process.env.FPHO_ANCHOR_UTXO_AMOUNT;
+const fundingUtxoAddress = process.env.FPHO_ANCHOR_UTXO_ADDRESS;
+const fundingUtxoFee = process.env.FPHO_ANCHOR_UTXO_FEE;
+
 if (!Number.isFinite(windowSeconds) || windowSeconds <= 0) {
   throw new Error('FPHO_WINDOW_SECONDS must be a positive number');
 }
@@ -89,7 +95,17 @@ const runOnce = async () => {
     pair,
     windowSeconds,
     windowTs,
-    fluxRpc: transport
+    fluxRpc: transport,
+    fundingUtxo:
+      fundingUtxoTxid && fundingUtxoVoutRaw && fundingUtxoAmount && fundingUtxoAddress
+        ? {
+            txid: fundingUtxoTxid,
+            vout: Number(fundingUtxoVoutRaw),
+            amount: fundingUtxoAmount,
+            address: fundingUtxoAddress,
+            fee: fundingUtxoFee
+          }
+        : undefined
   });
 
   console.log('[anchorer] anchored', `${windowSeconds}:${windowTs}`, result.txid);

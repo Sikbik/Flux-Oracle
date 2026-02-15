@@ -16,6 +16,17 @@ export interface BroadcastOpReturnResult {
   signedHex: string;
 }
 
+export interface BroadcastOpReturnUtxoInput {
+  txid: string;
+  vout: number;
+  changeAddress: string;
+  changeAmount: string;
+}
+
+export interface BroadcastOpReturnHexOptions {
+  utxo?: BroadcastOpReturnUtxoInput;
+}
+
 export class FluxRpcHttpTransport implements FluxRpcTransport {
   private readonly endpoint: URL;
   private readonly authHeader: string | null;
@@ -82,25 +93,34 @@ export class FluxRpcHttpTransport implements FluxRpcTransport {
 
 export async function broadcastOpReturnHex(
   transport: FluxRpcTransport,
-  opReturnHex: string
+  opReturnHex: string,
+  options: BroadcastOpReturnHexOptions = {}
 ): Promise<BroadcastOpReturnResult> {
-  const unsignedHex = await transport.call<string>('createrawtransaction', [
-    [],
-    [{ data: opReturnHex }]
-  ]);
+  const utxo = options.utxo;
 
-  const funded = await transport.call<{ hex?: string }>('fundrawtransaction', [unsignedHex]);
-  if (!funded.hex) {
-    throw new Error('fundrawtransaction returned no hex');
+  const inputs = utxo ? [{ txid: utxo.txid, vout: utxo.vout }] : [];
+  const outputs: Record<string, unknown> = utxo
+    ? { [utxo.changeAddress]: utxo.changeAmount, data: opReturnHex }
+    : { data: opReturnHex };
+
+  const unsignedHex = await transport.call<string>('createrawtransaction', [inputs, outputs]);
+
+  let fundedHex = unsignedHex;
+
+  if (!utxo) {
+    const funded = await transport.call<{ hex?: string }>('fundrawtransaction', [unsignedHex]);
+    if (!funded.hex) {
+      throw new Error('fundrawtransaction returned no hex');
+    }
+    fundedHex = funded.hex;
   }
 
-  const signed = await transport.call<{ hex?: string; complete?: boolean }>(
-    'signrawtransactionwithwallet',
-    [funded.hex]
-  );
+  const signed = await transport.call<{ hex?: string; complete?: boolean }>('signrawtransaction', [
+    fundedHex
+  ]);
 
   if (!signed.hex || signed.complete !== true) {
-    throw new Error('signrawtransactionwithwallet did not return a complete signed tx');
+    throw new Error('signrawtransaction did not return a complete signed tx');
   }
 
   const txid = await transport.call<string>('sendrawtransaction', [signed.hex]);
@@ -108,7 +128,7 @@ export async function broadcastOpReturnHex(
   return {
     txid,
     unsignedHex,
-    fundedHex: funded.hex,
+    fundedHex,
     signedHex: signed.hex
   };
 }

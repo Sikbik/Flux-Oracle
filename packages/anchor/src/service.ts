@@ -1,10 +1,23 @@
 import Database from 'better-sqlite3';
 
-import { encodeOpReturnPayload, type OpReturnPayload } from '@fpho/core';
+import {
+  encodeOpReturnPayload,
+  formatFixedToDecimal,
+  parseDecimalToFixed,
+  type OpReturnPayload
+} from '@fpho/core';
 import { buildSignatureBitmap, type ReporterRegistry } from '@fpho/p2p';
 
 import { buildIpfsMirrorUrl, type IpfsPublisher } from './ipfs.js';
 import { broadcastOpReturnHex, type FluxRpcTransport } from './rpc.js';
+
+export interface AnchorFundingUtxoSeed {
+  txid: string;
+  vout: number;
+  amount: string;
+  address: string;
+  fee?: string;
+}
 
 export interface PairIdMap {
   [pair: string]: number;
@@ -22,6 +35,7 @@ export interface AnchorHourReportOptions {
   ipfsPublisher?: IpfsPublisher;
   ipfsGatewayBaseUrl?: string;
   pairIdMap?: PairIdMap;
+  fundingUtxo?: AnchorFundingUtxoSeed;
 }
 
 export interface AnchorHourReportResult {
@@ -41,6 +55,7 @@ export interface AnchorWindowReportOptions {
   ipfsPublisher?: IpfsPublisher;
   ipfsGatewayBaseUrl?: string;
   pairIdMap?: PairIdMap;
+  fundingUtxo?: AnchorFundingUtxoSeed;
 }
 
 export interface AnchorWindowReportResult {
@@ -107,7 +122,30 @@ export async function anchorHourReport(
       ipfsMirrorUrl = buildIpfsMirrorUrl(publishResult.cid, options.ipfsGatewayBaseUrl);
     }
 
-    const broadcast = await broadcastOpReturnHex(options.fluxRpc, opReturnHex);
+    const fundingUtxo = resolveFundingUtxo(db, options.fundingUtxo);
+    const broadcast = await broadcastOpReturnHex(
+      options.fluxRpc,
+      opReturnHex,
+      fundingUtxo
+        ? {
+            utxo: {
+              txid: fundingUtxo.txid,
+              vout: fundingUtxo.vout,
+              changeAddress: fundingUtxo.address,
+              changeAmount: computeChangeAmount(fundingUtxo)
+            }
+          }
+        : {}
+    );
+
+    if (fundingUtxo) {
+      persistFundingUtxo(db, {
+        txid: broadcast.txid,
+        vout: 0,
+        amount: computeChangeAmount(fundingUtxo),
+        address: fundingUtxo.address
+      });
+    }
 
     db.prepare(
       `
@@ -220,7 +258,30 @@ export async function anchorWindowReport(
       ipfsMirrorUrl = buildIpfsMirrorUrl(publishResult.cid, options.ipfsGatewayBaseUrl);
     }
 
-    const broadcast = await broadcastOpReturnHex(options.fluxRpc, opReturnHex);
+    const fundingUtxo = resolveFundingUtxo(db, options.fundingUtxo);
+    const broadcast = await broadcastOpReturnHex(
+      options.fluxRpc,
+      opReturnHex,
+      fundingUtxo
+        ? {
+            utxo: {
+              txid: fundingUtxo.txid,
+              vout: fundingUtxo.vout,
+              changeAddress: fundingUtxo.address,
+              changeAmount: computeChangeAmount(fundingUtxo)
+            }
+          }
+        : {}
+    );
+
+    if (fundingUtxo) {
+      persistFundingUtxo(db, {
+        txid: broadcast.txid,
+        vout: 0,
+        amount: computeChangeAmount(fundingUtxo),
+        address: fundingUtxo.address
+      });
+    }
 
     db.prepare(
       `
@@ -456,4 +517,67 @@ function loadReporterRegistry(db: Database.Database, reporterSetId: string): Rep
   }
 
   return parsed as ReporterRegistry;
+}
+
+type AnchorUtxoRow = {
+  txid: string | null;
+  vout: number | null;
+  amount: string | null;
+  address: string | null;
+};
+
+function resolveFundingUtxo(
+  db: Database.Database,
+  seed: AnchorFundingUtxoSeed | undefined
+): AnchorFundingUtxoSeed | null {
+  const row = db
+    .prepare(
+      `
+        SELECT txid, vout, amount, address
+        FROM anchor_utxo_state
+        WHERE id = 1
+        LIMIT 1
+      `
+    )
+    .get() as AnchorUtxoRow | undefined;
+
+  if (row?.txid && row.vout !== null && row.amount && row.address) {
+    return {
+      txid: row.txid,
+      vout: row.vout,
+      amount: row.amount,
+      address: row.address,
+      fee: seed?.fee
+    };
+  }
+
+  if (!seed) {
+    return null;
+  }
+
+  // Seed will be used for the first spend; it persists once we have a broadcast txid.
+  return seed;
+}
+
+function persistFundingUtxo(db: Database.Database, utxo: AnchorFundingUtxoSeed): void {
+  db.prepare(
+    `
+      UPDATE anchor_utxo_state
+      SET txid = ?, vout = ?, amount = ?, address = ?, updated_at = unixepoch()
+      WHERE id = 1
+    `
+  ).run(utxo.txid, utxo.vout, utxo.amount, utxo.address);
+}
+
+function computeChangeAmount(utxo: AnchorFundingUtxoSeed): string {
+  const fee = utxo.fee?.trim() ? utxo.fee : '0';
+  const amountFixed = BigInt(parseDecimalToFixed(utxo.amount));
+  const feeFixed = BigInt(parseDecimalToFixed(fee));
+  if (feeFixed < 0n) {
+    throw new Error('fundingUtxo fee must be non-negative');
+  }
+  if (feeFixed > amountFixed) {
+    throw new Error('fundingUtxo fee exceeds available amount');
+  }
+  return formatFixedToDecimal((amountFixed - feeFixed).toString());
 }
